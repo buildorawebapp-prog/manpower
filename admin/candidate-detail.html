@@ -156,6 +156,14 @@
                     <span id="statusSaveNote" class="hide" style="margin-left:12px; font-weight:700; color:var(--green);">✓ Updated</span>
                   </div>
                 </div>
+
+                <div class="detail-section" id="resetPwdSection">
+                  <div class="detail-label">Account Login</div>
+                  <div class="detail-value">
+                    <button class="mini-btn" id="resetPwdBtn" onclick="resetUserPassword()">🔑 Reset Password</button>
+                    <div id="resetPwdResult" class="hide" style="margin-top:14px;"></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -199,7 +207,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../js/supabase.js?v=3"></script>
   <script src="../js/chat-attachments.js?v=1"></script>
-  <script src="detail.js?v=3"></script>
+  <script src="detail.js?v=4"></script>
   <script>
     const SUBMISSION_TYPE = 'candidate';
     initDetailPage(SUBMISSION_TYPE);

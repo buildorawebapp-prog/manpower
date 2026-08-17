@@ -604,7 +604,10 @@
   <div id="passwordModal" class="modal" style="display:none;">
     <div class="modal-overlay" onclick="closePasswordModal()"></div>
     <div class="modal-content">
-      <h3>🔑 Change Password</h3>
+      <h3 id="pwdModalTitle">🔑 Change Password</h3>
+      <div id="forcedPwdNote" class="hide" style="background:#fff3e0; border-left:4px solid var(--saffron, #f0a500); border-radius:8px; padding:12px 14px; margin-top:14px; font-size:14px; line-height:1.55; color:var(--ink, #333);">
+        🔒 For your security, please set your own new password to continue. Enter the temporary password you just used as your <strong>current password</strong> below.
+      </div>
       <form id="passwordForm" style="margin-top:20px;">
         <div class="field">
           <label>Current Password</label>
@@ -619,7 +622,7 @@
           <input type="password" id="confirmPassword" required />
         </div>
         <div style="display:flex; gap:12px; margin-top:20px;">
-          <button type="button" class="btn btn-ghost" onclick="closePasswordModal()">Cancel</button>
+          <button type="button" class="btn btn-ghost" id="cancelPwdBtn" onclick="closePasswordModal()">Cancel</button>
           <button type="submit" class="btn btn-primary">Update Password</button>
         </div>
       </form>
@@ -636,6 +639,7 @@
     let submissions = [];
     let selectedSubmission = null;
     let chatSelectedFile = null;
+    let forcedPasswordChange = false;
 
     // Check login on load
     window.addEventListener('DOMContentLoaded', async () => {
@@ -662,6 +666,12 @@
 
       // Load submissions
       await loadSubmissions();
+
+      // If the user logged in with a temporary password (new signup or an
+      // admin reset), force them to set their own password before continuing.
+      if (sessionStorage.getItem('isTempPassword') === 'true') {
+        startForcedPasswordChange();
+      }
     });
 
     async function loadSubmissions() {
@@ -1056,8 +1066,30 @@
     }
 
     function closePasswordModal() {
+      // While a temp-password change is being forced, the modal cannot be
+      // dismissed — the user must set a real password first.
+      if (forcedPasswordChange) return;
       document.getElementById('passwordModal').style.display = 'none';
       document.getElementById('passwordForm').reset();
+    }
+
+    // Open the password modal in "forced" mode: no Cancel, cannot be dismissed,
+    // with a note explaining why. Triggered when isTempPassword === 'true'.
+    function startForcedPasswordChange() {
+      forcedPasswordChange = true;
+      document.getElementById('passwordModal').style.display = 'flex';
+
+      const title = document.getElementById('pwdModalTitle');
+      if (title) title.textContent = '🔒 Set Your New Password';
+
+      const note = document.getElementById('forcedPwdNote');
+      if (note) note.classList.remove('hide');
+
+      const cancelBtn = document.getElementById('cancelPwdBtn');
+      if (cancelBtn) cancelBtn.style.display = 'none';
+
+      const cur = document.getElementById('currentPassword');
+      if (cur) cur.placeholder = 'Temporary password you just used';
     }
 
     document.getElementById('passwordForm').addEventListener('submit', async (e) => {
@@ -1090,9 +1122,22 @@
 
         const result = data[0];
         if (result.success) {
+          // Clear temp-password state and restore the modal to its normal,
+          // dismissible form (in case this was a forced first-login change).
+          sessionStorage.setItem('isTempPassword', 'false');
+          forcedPasswordChange = false;
+
+          const title = document.getElementById('pwdModalTitle');
+          if (title) title.textContent = '🔑 Change Password';
+          const note = document.getElementById('forcedPwdNote');
+          if (note) note.classList.add('hide');
+          const cancelBtn = document.getElementById('cancelPwdBtn');
+          if (cancelBtn) cancelBtn.style.display = '';
+          const cur = document.getElementById('currentPassword');
+          if (cur) cur.placeholder = '';
+
           alert('Password updated successfully!');
           closePasswordModal();
-          sessionStorage.setItem('isTempPassword', 'false');
         } else {
           alert(result.message || 'Password change failed');
         }

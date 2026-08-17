@@ -429,6 +429,112 @@ function copyToken() {
   });
 }
 
+/* ==========================================================================
+   Reset User Password (admin action)
+   Issues a fresh temporary password for the candidate/employer's login,
+   forces a change on their next login, and lets the admin send it on
+   WhatsApp. Works for both candidates and employers (shared login identity).
+   ========================================================================== */
+async function resetUserPassword() {
+  const email = (submissionData && submissionData.email) ? submissionData.email : '';
+  const phone = (submissionData && submissionData.phone) ? submissionData.phone : '';
+
+  if (!email) {
+    alert('This record has no email address, so there is no login account to reset.');
+    return;
+  }
+
+  const who = (submissionType === 'candidate')
+    ? (submissionData.full_name || email)
+    : (submissionData.company_name || email);
+
+  if (!confirm(
+    'Reset the login password for ' + who + ' (' + email + ')?\n\n' +
+    "Their current password will stop working immediately. You'll get a new " +
+    'temporary password to send them on WhatsApp.'
+  )) return;
+
+  const btn = document.getElementById('resetPwdBtn');
+  const resultBox = document.getElementById('resetPwdResult');
+  const originalTxt = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Resetting…'; }
+
+  try {
+    const { data, error } = await client.rpc('admin_reset_user_password', { p_email: email });
+    if (error) throw error;
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row || !row.success) {
+      throw new Error((row && row.message) || 'Reset failed.');
+    }
+
+    renderResetResult(resultBox, email, phone, row.temp_password);
+  } catch (err) {
+    console.error('Password reset failed:', err);
+    alert('Could not reset password: ' + (err.message || 'Unknown error'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalTxt || '🔑 Reset Password'; }
+  }
+}
+
+function renderResetResult(box, email, phone, tempPwd) {
+  if (!box) return;
+
+  const waLink = buildWhatsAppResetLink(phone, email, tempPwd);
+  const waBtn = waLink
+    ? '<a class="mini-btn" href="' + waLink + '" target="_blank" rel="noopener" ' +
+      'style="background:#25D366;color:#fff;border-color:#25D366;">📲 Send on WhatsApp</a>'
+    : '<span style="color:var(--muted);font-size:13px;">No phone number on file — copy and send it manually.</span>';
+
+  box.innerHTML =
+    '<div style="background:#fff8ec;border:1px solid var(--saffron);border-radius:12px;padding:14px;">' +
+      '<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;">New Temporary Password</div>' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+        '<code id="tempPwdValue" style="font-size:20px;font-weight:800;letter-spacing:.08em;font-family:monospace;background:#fff;padding:6px 12px;border-radius:8px;border:1px dashed #cbb48a;color:var(--navy-900);">' + escapeHtml(tempPwd) + '</code>' +
+        '<button class="mini-btn" onclick="copyTempPassword()">📋 Copy</button>' +
+        waBtn +
+      '</div>' +
+      '<p style="margin:10px 0 0;font-size:13px;color:var(--muted);line-height:1.5;">' +
+        'Send this to the user. They log in with their email + this password, then set their own new password. ' +
+        'It is shown only until you leave this page — copy it now.' +
+      '</p>' +
+    '</div>';
+  box.classList.remove('hide');
+}
+
+// Build a wa.me deep link with a pre-filled reset message. Normalises Indian
+// numbers to +91 (10-digit) and returns null if there is no usable phone.
+function buildWhatsAppResetLink(phone, email, tempPwd) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return null;
+
+  let intl = digits;
+  if (digits.length === 10) intl = '91' + digits;                       // bare 10-digit → India
+  else if (digits.length === 11 && digits.charAt(0) === '0') intl = '91' + digits.slice(1);
+  // otherwise assume it already includes a country code
+
+  const msg =
+    'Hello,\n\n' +
+    'Your Go Hire Consultancy login password has been reset.\n\n' +
+    'Login Email: ' + email + '\n' +
+    'Temporary Password: ' + tempPwd + '\n\n' +
+    'Please login here: https://gohireconsultancy.com/login.html\n' +
+    "For your security, you'll be asked to set your own new password right after logging in.";
+
+  return 'https://wa.me/' + intl + '?text=' + encodeURIComponent(msg);
+}
+
+function copyTempPassword() {
+  const el = document.getElementById('tempPwdValue');
+  if (!el) return;
+  const val = el.textContent;
+  navigator.clipboard.writeText(val).then(() => {
+    alert('Temporary password copied: ' + val);
+  }).catch(() => {
+    alert('Could not copy automatically. Password: ' + val);
+  });
+}
+
 /* ---- Utility Functions ---- */
 function formatDateTime(dateStr) {
   const d = new Date(dateStr);
