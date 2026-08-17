@@ -336,8 +336,16 @@ USING (
 -- ============================================================================
 -- GRANT PERMISSIONS
 -- ============================================================================
-GRANT EXECUTE ON FUNCTION create_payment_order(JSONB) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION verify_payment(TEXT, TEXT, TEXT) TO anon, authenticated;
+-- SECURITY: create_payment_order and verify_payment are called ONLY by the
+-- Edge Functions (create-razorpay-order / verify-razorpay-payment) as the
+-- service_role. They must NOT be callable by anon — the anon key is public and
+-- verify_payment does no signature check, so an anon grant reopens the
+-- "mark myself paid" hole. Keep these as service_role-only.
+-- (See supabase/razorpay_secure_lockdown.sql and RAZORPAY_GO_LIVE.md.)
+REVOKE ALL ON FUNCTION create_payment_order(JSONB) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION verify_payment(TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION create_payment_order(JSONB) TO service_role;
+GRANT EXECUTE ON FUNCTION verify_payment(TEXT, TEXT, TEXT) TO service_role;
 GRANT EXECUTE ON FUNCTION get_candidate_payments(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_all_payments() TO authenticated;
 

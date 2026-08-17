@@ -253,45 +253,51 @@ async function proceedToPayment() {
       throw new Error('Razorpay SDK not loaded. Please refresh and try again.');
     }
 
-    const client = initSupabase();
-    if (!client) {
-      throw new Error('Database connection not initialized. Please refresh the page.');
-    }
-
-    // Step 1: Save candidate data first (without payment)
-    const { data: candidateResult, error: candidateError } = await client.rpc('create_payment_order', {
-      p_candidate_data: candidateData
+    // Step 1: Create a REAL Razorpay order on the SERVER (Edge Function).
+    // The server holds the Razorpay secret, creates a genuine order, and saves
+    // the candidate + payment row. The browser never sees the secret, and the
+    // real order_id is what lets us verify a signature after payment.
+    const orderResp = await fetch(`${CONFIG.supabaseUrl}/functions/v1/create-razorpay-order`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`,
+        'apikey': CONFIG.supabaseAnonKey,
+      },
+      body: JSON.stringify({ candidateData })
     });
+    const orderResult = await orderResp.json().catch(() => null);
 
-    if (candidateError || !candidateResult) {
-      // Backstop: the database trigger blocks an employer email applying as a
-      // candidate. Surface it as a friendly message instead of a generic error.
-      const emsg = (candidateError && candidateError.message) ? candidateError.message : '';
-      if (emsg.indexOf('ROLE_CONFLICT') !== -1) {
+    if (!orderResp.ok || !orderResult || orderResult.success === false) {
+      // Friendly message when the email is already an employer account.
+      if (orderResult && orderResult.code === 'ROLE_CONFLICT') {
         alert('This email is already registered as an employer account. Please use a different email to apply as a candidate.');
         payBtn.disabled = false;
         payBtn.textContent = 'Confirm & Proceed to Pay ₹200';
         return;
       }
-      throw new Error(candidateError?.message || 'Failed to save application');
+      throw new Error((orderResult && orderResult.error) || 'Failed to create payment order');
     }
 
-    // Store candidate_id for later verification
-    const candidateId = candidateResult.candidate_id;
-    const receiptId = candidateResult.receipt_id;
+    // Store details for later verification
+    const candidateId = orderResult.candidate_id;
+    const orderId = orderResult.order_id;
+    const payAmount = orderResult.amount || 20000;
 
-    // Step 2: Initialize Razorpay (without order_id for test mode)
+    // Step 2: Open Razorpay Checkout with the REAL order_id. Passing order_id is
+    // what makes Razorpay return a signature we verify server-side.
     const options = {
-      key: CONFIG.razorpayKeyId,
-      amount: 20000, // ₹200 fixed amount
-      currency: 'INR',
+      key: orderResult.key_id || CONFIG.razorpayKeyId,
+      amount: payAmount, // ₹200 fixed amount (in paise), set by the server
+      currency: orderResult.currency || 'INR',
+      order_id: orderId,
       name: 'Go Hire Consultancy',
       description: 'Candidate Application Fee',
       image: 'https://gohireconsultancy.com/images/logo.png',
       handler: async function(response) {
         // Payment success
         payBtn.textContent = 'Verifying payment...';
-        await verifyPaymentAndSave(response, candidateId, receiptId);
+        await verifyPaymentAndSave(response, candidateId);
       },
       prefill: {
         name: candidateData.full_name,
@@ -300,7 +306,7 @@ async function proceedToPayment() {
       },
       notes: {
         candidate_id: candidateId,
-        receipt_id: receiptId,
+        order_id: orderId,
       },
       theme: {
         color: '#FF6B35'
@@ -333,21 +339,31 @@ async function proceedToPayment() {
 /* ----------------------------------------------------------------------
    Step 5: Verify Payment & Save to Database
 ---------------------------------------------------------------------- */
-async function verifyPaymentAndSave(razorpayResponse, candidateId, receiptId) {
+async function verifyPaymentAndSave(razorpayResponse, candidateId) {
   const payBtn = document.getElementById('proceedPayBtn');
   payBtn.textContent = 'Verifying payment...';
 
   try {
-    // Verify payment on server
-    const client = initSupabase();
-    const { data, error } = await client.rpc('verify_payment', {
-      p_order_id: receiptId,
-      p_payment_id: razorpayResponse.razorpay_payment_id,
-      p_signature: razorpayResponse.razorpay_signature || 'no_signature'
+    // Verify the payment signature on the SERVER (Edge Function). Only a valid
+    // HMAC signature (computed with the Razorpay secret, which the browser never
+    // has) will finalize the application and issue login credentials.
+    const resp = await fetch(`${CONFIG.supabaseUrl}/functions/v1/verify-razorpay-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${CONFIG.supabaseAnonKey}`,
+        'apikey': CONFIG.supabaseAnonKey,
+      },
+      body: JSON.stringify({
+        razorpay_order_id: razorpayResponse.razorpay_order_id,
+        razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+        razorpay_signature: razorpayResponse.razorpay_signature,
+      })
     });
+    const data = await resp.json().catch(() => null);
 
-    if (error || !data || !data.success) {
-      throw new Error(data?.error || error?.message || 'Payment verification failed');
+    if (!resp.ok || !data || !data.success) {
+      throw new Error((data && data.error) || 'Payment verification failed');
     }
 
     // Success! Show final step
@@ -368,13 +384,20 @@ async function verifyPaymentAndSave(razorpayResponse, candidateId, receiptId) {
 function displaySuccess(data) {
   const successDetails = document.getElementById('successDetails');
 
-  successDetails.innerHTML = `
-    <div class="success-message">
-      <div class="success-icon">✅</div>
-      <h2>Application Submitted Successfully!</h2>
-      <p>Your payment of <strong>₹${(data.amount / 100).toFixed(2)}</strong> has been received.</p>
-    </div>
-
+  // Returning users keep their existing password — we never issue (or reset)
+  // one for an email that already has an account.
+  const credentialsBox = (data.already_registered || !data.temp_password)
+    ? `
+    <div class="credentials-box">
+      <h3>🔐 Your Account</h3>
+      <div class="credential-item">
+        <span class="cred-label">Email:</span>
+        <span class="cred-value">${data.email}</span>
+      </div>
+      <p class="cred-note">✅ You already have an account. Please log in with your <strong>existing password</strong>.</p>
+      <p class="cred-warning">Forgot it? Contact us and an admin will reset it for you.</p>
+    </div>`
+    : `
     <div class="credentials-box">
       <h3>🔐 Login Credentials</h3>
       <div class="credential-item">
@@ -385,15 +408,23 @@ function displaySuccess(data) {
         <span class="cred-label">Temporary Password:</span>
         <span class="cred-value temp-password">${data.temp_password}</span>
       </div>
-      <p class="cred-note">📧 These credentials have been sent to your email.</p>
+      <p class="cred-note">📝 Save these now. You'll be asked to set your own password on first login.</p>
       <p class="cred-warning">⚠️ Please change your password after first login.</p>
+    </div>`;
+
+  successDetails.innerHTML = `
+    <div class="success-message">
+      <div class="success-icon">✅</div>
+      <h2>Application Submitted Successfully!</h2>
+      <p>Your payment of <strong>₹${(data.amount / 100).toFixed(2)}</strong> has been received.</p>
     </div>
+
+    ${credentialsBox}
 
     <div class="next-steps">
       <h3>📋 Next Steps:</h3>
       <ol>
-        <li>Check your email for confirmation</li>
-        <li>Login to your dashboard using the credentials above</li>
+        <li>Login to your dashboard using the details above</li>
         <li>Complete your profile if needed</li>
         <li>Our team will review your application</li>
       </ol>
