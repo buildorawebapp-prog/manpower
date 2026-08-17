@@ -4,104 +4,447 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Apply for Work — Go Hire Consultancy</title>
-  <meta name="description" content="Register as a skilled worker with Go Hire Consultancy. Fill the form and our team will contact you for matching jobs." />
+  <meta name="description" content="Register as a skilled worker with Go Hire Consultancy. Application fee: ₹200" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=5" />
+  <link rel="stylesheet" href="css/style.css?v=6" />
+  <style>
+    /* Payment Form Specific Styles */
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 40px;
+      padding: 20px;
+      background: linear-gradient(135deg, rgba(10,37,64,0.03), rgba(255,107,53,0.03));
+      border-radius: 16px;
+    }
+    .step-indicator .step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: #f8f9fa;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      font-weight: 600;
+      color: #999;
+      transition: all 0.3s ease;
+    }
+    .step-indicator .step.active {
+      background: var(--orange);
+      border-color: var(--orange);
+      color: #fff;
+    }
+    .step-indicator .step.completed {
+      background: #4caf50;
+      border-color: #4caf50;
+      color: #fff;
+    }
+    .step-indicator .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .form-step {
+      min-height: 400px;
+    }
+    .form-step.hide {
+      display: none;
+    }
+
+    /* Resume Upload Styles */
+    .upload-area {
+      border: 2px dashed #ddd;
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      background: #f9fafb;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .upload-area:hover {
+      border-color: var(--orange);
+      background: #fff5f0;
+    }
+    .upload-area.drag-over {
+      border-color: var(--orange);
+      background: #fff5f0;
+    }
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .upload-area input[type="file"] {
+      display: none;
+    }
+    .file-info {
+      margin-top: 20px;
+      padding: 16px;
+      background: #e8f5e9;
+      border-radius: 8px;
+      display: none;
+    }
+    .file-info.show {
+      display: block;
+    }
+    .upload-progress {
+      margin-top: 20px;
+    }
+    .upload-progress.hide {
+      display: none;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--orange);
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    /* Review Section */
+    .review-section {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .review-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .review-item:last-child {
+      border-bottom: none;
+    }
+    .review-label {
+      font-weight: 600;
+      color: #666;
+    }
+    .review-value {
+      font-weight: 600;
+      color: var(--navy-900);
+    }
+    .resume-link {
+      color: var(--orange);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .resume-link:hover {
+      text-decoration: underline;
+    }
+    .payment-summary {
+      background: linear-gradient(135deg, var(--navy-900), #0d3a5f);
+      color: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+    .payment-amount {
+      font-size: 42px;
+      font-weight: 800;
+      color: var(--orange);
+      margin: 16px 0;
+    }
+
+    /* Success Page */
+    .success-message {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .success-icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+    }
+    .credentials-box {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .credential-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    .credential-item:last-child {
+      border-bottom: none;
+    }
+    .temp-password {
+      font-family: 'Courier New', monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: #d32f2f;
+      background: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+    }
+    .cred-note {
+      margin-top: 16px;
+      color: #666;
+      font-size: 14px;
+    }
+    .cred-warning {
+      margin-top: 8px;
+      color: #d32f2f;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .next-steps {
+      background: #e3f2fd;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .next-steps ol {
+      margin-left: 20px;
+    }
+    .next-steps li {
+      margin: 8px 0;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+      .step-indicator {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .step-indicator .step {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+      .step-indicator .step-text {
+        display: none;
+      }
+      .payment-amount {
+        font-size: 32px;
+      }
+    }
+  </style>
 </head>
 <body>
   <div id="header-slot"></div>
 
   <section class="page-hero with-photo" style="--hero-img:url('/images/worker.jpg')">
     <div class="container">
-      <h1 data-i18n="apply.title"></h1>
-      <p data-i18n="apply.sub"></p>
+      <h1>Apply for Work</h1>
+      <p>Complete your application in 3 simple steps. Application fee: ₹200</p>
     </div>
   </section>
 
   <section class="section">
     <div class="container form-wrap">
       <div class="form-card">
-        <form id="applyForm" novalidate>
-          <!-- honeypot -->
-          <input class="honeypot" type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" />
 
-          <div class="form-row">
-            <div class="field">
-              <label><span data-i18n="f.name"></span> <span class="req">*</span></label>
-              <input type="text" name="full_name" required />
-              <div class="err-msg"></div>
-            </div>
-            <div class="field">
-              <label><span data-i18n="f.email"></span> <span class="req">*</span></label>
-              <input type="email" name="email" data-type="email" required placeholder="your@email.com" />
-              <div class="err-msg"></div>
-            </div>
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+          <div class="step active" data-step="1">
+            <span class="step-num">1</span>
+            <span class="step-text">Basic Details</span>
           </div>
-
-          <div class="form-row">
-            <div class="field">
-              <label><span data-i18n="f.phone"></span> <span class="req">*</span></label>
-              <input type="tel" name="phone" data-type="phone" required placeholder="+91 " />
-              <div class="err-msg"></div>
-            </div>
-            <div class="field">
-              <label><span data-i18n="f.exp"></span> <span class="req">*</span></label>
-              <select name="experience" id="expSelect" required></select>
-              <div class="err-msg"></div>
-            </div>
+          <div class="step" data-step="2">
+            <span class="step-num">2</span>
+            <span class="step-text">Upload Resume</span>
           </div>
-
-          <div class="field">
-            <label><span data-i18n="f.trade"></span> <span class="req">*</span></label>
-            <select name="trade" id="tradeSelect" required></select>
-            <div class="err-msg"></div>
+          <div class="step" data-step="3">
+            <span class="step-num">3</span>
+            <span class="step-text">Review & Pay</span>
           </div>
-
-          <div class="field">
-            <label><span data-i18n="f.location"></span> <span class="req">*</span></label>
-            <input type="text" name="location" list="locList" required />
-            <datalist id="locList"></datalist>
-            <div class="err-msg"></div>
-          </div>
-
-          <div class="field">
-            <label data-i18n="f.message"></label>
-            <textarea name="message" data-i18n-ph="f.message"></textarea>
-          </div>
-
-          <button type="submit" class="btn btn-primary btn-lg btn-block" data-i18n="apply.submit"></button>
-        </form>
-
-        <div class="form-success" id="applySuccess">
-          <div class="check">✓</div>
-          <h3 data-i18n="apply.okT"></h3>
-          <p data-i18n="apply.okP"></p>
-          <a href="index.html" class="btn btn-navy" style="margin-top:20px" data-i18n="nav.home"></a>
         </div>
+
+        <!-- STEP 1: Basic Form -->
+        <div id="step1" class="form-step">
+          <h2 style="margin-bottom:24px">📝 Basic Information</h2>
+          <form id="candidateForm">
+            <div class="form-row">
+              <div class="field">
+                <label>Full Name <span class="req">*</span></label>
+                <input type="text" id="fullName" required />
+              </div>
+              <div class="field">
+                <label>Email <span class="req">*</span></label>
+                <input type="email" id="email" required placeholder="your@email.com" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="field">
+                <label>Phone <span class="req">*</span></label>
+                <input type="tel" id="phone" required placeholder="+91 " />
+              </div>
+              <div class="field">
+                <label>Experience <span class="req">*</span></label>
+                <select id="experience" required></select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Trade/Skill <span class="req">*</span></label>
+              <select id="trade" required></select>
+            </div>
+
+            <div class="field">
+              <label>Preferred Location <span class="req">*</span></label>
+              <input type="text" id="location" list="locList" required />
+              <datalist id="locList"></datalist>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg btn-block">
+              Continue to Resume Upload →
+            </button>
+          </form>
+        </div>
+
+        <!-- STEP 2: Resume Upload -->
+        <div id="step2" class="form-step hide">
+          <h2 style="margin-bottom:24px">📄 Upload Your Resume</h2>
+          <p style="color:#666; margin-bottom:24px">
+            Upload your resume in PDF format (Max 10MB). This helps employers understand your qualifications.
+          </p>
+
+          <div class="upload-area" onclick="document.getElementById('resumeFile').click()">
+            <div class="upload-icon">📎</div>
+            <h3>Click to Select PDF File</h3>
+            <p style="color:#999; margin-top:8px">or drag and drop here</p>
+            <p style="color:#999; font-size:14px; margin-top:12px">Max file size: 10MB</p>
+            <input type="file" id="resumeFile" accept=".pdf" />
+          </div>
+
+          <div class="file-info" id="fileInfo">
+            <strong>Selected File:</strong>
+            <p id="fileName" style="margin-top:8px"></p>
+          </div>
+
+          <div class="upload-progress hide" id="uploadProgress">
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressBar"></div>
+            </div>
+            <p id="progressPercent" style="text-align:center; font-weight:600">0%</p>
+          </div>
+
+          <button id="uploadBtn" class="btn btn-primary btn-lg btn-block" onclick="uploadResume()" disabled style="margin-top:24px">
+            Upload Resume & Continue →
+          </button>
+
+          <button class="btn btn-white btn-lg btn-block" onclick="showStep(1)" style="margin-top:12px">
+            ← Back to Edit Details
+          </button>
+        </div>
+
+        <!-- STEP 3: Review & Payment -->
+        <div id="step3" class="form-step hide">
+          <h2 style="margin-bottom:24px">✅ Review Your Application</h2>
+
+          <div class="review-section" id="reviewData">
+            <!-- Populated by JS -->
+          </div>
+
+          <div class="payment-summary">
+            <h3 style="margin:0">Application Fee</h3>
+            <div class="payment-amount">₹200</div>
+            <p style="margin:0; opacity:0.9">One-time registration fee. Secure payment via Razorpay.</p>
+          </div>
+
+          <button id="proceedPayBtn" class="btn btn-primary btn-lg btn-block" onclick="proceedToPayment()">
+            🔒 Confirm & Proceed to Pay ₹200
+          </button>
+
+          <button class="btn btn-white btn-lg btn-block" onclick="showStep(2)" style="margin-top:12px">
+            ← Back to Resume
+          </button>
+
+          <p style="text-align:center; color:#999; font-size:13px; margin-top:20px">
+            🔒 Payments secured by Razorpay. We accept UPI, Cards, Net Banking & Wallets.
+          </p>
+        </div>
+
+        <!-- STEP 4: Success -->
+        <div id="step4" class="form-step hide">
+          <div id="successDetails">
+            <!-- Populated by JS after payment -->
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
 
   <div id="footer-slot"></div>
 
+  <!-- Razorpay SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <!-- App Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js?v=3"></script>
+  <script src="js/config.js?v=1"></script>
   <script src="js/i18n.js?v=3"></script>
   <script src="js/app.js?v=3"></script>
-  <script src="js/forms.js?v=3"></script>
+  <script src="js/payment.js?v=1"></script>
   <script>
-    function fillForm() {
-      fillTradeSelect(document.getElementById("tradeSelect"));
-      fillExpSelect(document.getElementById("expSelect"));
-      fillLocationList(document.getElementById("locList"));
-      applyLang(getLang());
+    // Fill dropdowns on page load
+    function fillFormDropdowns() {
+      const tradeSelect = document.getElementById('trade');
+      const expSelect = document.getElementById('experience');
+      const locList = document.getElementById('locList');
+
+      // Fill trades
+      tradeSelect.innerHTML = '<option value="">Select your trade...</option>' +
+        DEMO_TRADES.map(t => `<option value="${t.name}">${t.icon} ${t.name}</option>`).join('');
+
+      // Fill experience
+      expSelect.innerHTML = '<option value="">Select experience...</option>' +
+        EXP_OPTIONS.map(e => `<option value="${e}">${e}</option>`).join('');
+
+      // Fill locations
+      locList.innerHTML = DEMO_LOCATIONS.map(l => `<option value="${l}">`).join('');
     }
-    fillForm();
+
+    // File input drag & drop
+    const uploadArea = document.querySelector('.upload-area');
+    const fileInput = document.getElementById('resumeFile');
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('drag-over');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('drag-over');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        fileInput.files = files;
+        handleFileSelect(fileInput);
+      }
+    });
+
+    // Initialize
+    fillFormDropdowns();
+    loadLiveData(fillFormDropdowns);
     initShell("apply.html");
-    initForm("applyForm", "applySuccess");
-    loadLiveData(fillForm);
   </script>
 </body>
 </html>
