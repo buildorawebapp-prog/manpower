@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apply for Work — Go Hire Consultancy</title>
+  <meta name="description" content="Register as a skilled worker with Go Hire Consultancy. Fill the form and our team will contact you for matching jobs." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div id="header-slot"></div>
+
+  <section class="page-hero with-photo" style="--hero-img:url('/images/worker.jpg')">
+    <div class="container">
+      <h1 data-i18n="apply.title"></h1>
+      <p data-i18n="apply.sub"></p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container form-wrap">
+      <div class="form-card">
+        <form id="applyForm" novalidate>
+          <!-- honeypot -->
+          <input class="honeypot" type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+          <div class="form-row">
+            <div class="field">
+              <label><span data-i18n="f.name"></span> <span class="req">*</span></label>
+              <input type="text" name="full_name" required />
+              <div class="err-msg"></div>
+            </div>
+            <div class="field">
+              <label><span data-i18n="f.email"></span> <span class="req">*</span></label>
+              <input type="email" name="email" data-type="email" required placeholder="your@email.com" />
+              <div class="err-msg"></div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label><span data-i18n="f.phone"></span> <span class="req">*</span></label>
+              <input type="tel" name="phone" data-type="phone" required placeholder="+91 " />
+              <div class="err-msg"></div>
+            </div>
+            <div class="field">
+              <label><span data-i18n="f.exp"></span> <span class="req">*</span></label>
+              <select name="experience" id="expSelect" required></select>
+              <div class="err-msg"></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label><span data-i18n="f.trade"></span> <span class="req">*</span></label>
+            <select name="trade" id="tradeSelect" required></select>
+            <div class="err-msg"></div>
+          </div>
+
+          <div class="field">
+            <label><span data-i18n="f.location"></span> <span class="req">*</span></label>
+            <input type="text" name="location" list="locList" required />
+            <datalist id="locList"></datalist>
+            <div class="err-msg"></div>
+          </div>
+
+          <div class="field">
+            <label data-i18n="f.message"></label>
+            <textarea name="message" data-i18n-ph="f.message"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg btn-block" data-i18n="apply.submit"></button>
+        </form>
+
+        <div class="form-success" id="applySuccess">
+          <div class="check">✓</div>
+          <h3 data-i18n="apply.okT"></h3>
+          <p data-i18n="apply.okP"></p>
+          <a href="index.html" class="btn btn-navy" style="margin-top:20px" data-i18n="nav.home"></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-slot"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js?v=3"></script>
+  <script src="js/i18n.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
+  <script src="js/forms.js?v=3"></script>
+  <script>
+    function fillForm() {
+      fillTradeSelect(document.getElementById("tradeSelect"));
+      fillExpSelect(document.getElementById("expSelect"));
+      fillLocationList(document.getElementById("locList"));
+      applyLang(getLang());
+    }
+    fillForm();
+    initShell("apply.html");
+    initForm("applyForm", "applySuccess");
+    loadLiveData(fillForm);
+  </script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — Go Hire Consultancy</title>
+  <meta name="description" content="Login to track your applications and chat with our team." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=8" />
+</head>
+<body>
+  <div id="header-slot"></div>
+
+  <section class="page-hero" style="background: linear-gradient(135deg, var(--navy-800), var(--navy-900));">
+    <div class="container">
+      <h1 style="color: #fff;">🔐 Login to Your Account</h1>
+      <p style="color: rgba(255,255,255,0.85);">Access your applications and chat with our team</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="form-wrap" style="max-width: 480px; margin: 0 auto;">
+        <div class="form-card">
+          <h2 style="text-align: center; margin-bottom: 24px;">Welcome Back!</h2>
+
+          <form id="loginForm" novalidate>
+            <div class="field">
+              <label>Email Address <span class="req">*</span></label>
+              <input type="email" name="email" id="loginEmail" data-type="email" required placeholder="your@email.com" autocomplete="email" />
+              <div class="err-msg"></div>
+            </div>
+
+            <div class="field">
+              <label>Password <span class="req">*</span></label>
+              <input type="password" name="password" id="loginPassword" required placeholder="Enter your password" autocomplete="current-password" />
+              <div class="err-msg"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg btn-block" id="loginBtn">Login</button>
+          </form>
+
+          <div style="text-align: center; margin-top: 20px; color: var(--muted); font-size: 14px;">
+            <p>Don't have an account? <a href="apply.html" style="color: var(--saffron); font-weight: 700;">Apply Now</a></p>
+            <p style="margin-top: 8px;">Or <a href="hire.html" style="color: var(--saffron); font-weight: 700;">Post a Job</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-slot"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js?v=3"></script>
+  <script src="js/i18n.js?v=4"></script>
+  <script src="js/app.js?v=3"></script>
+  <script src="js/forms.js?v=5"></script>
+  <script>
+    initShell("login.html");
+    applyLang(getLang());
+
+    // Check if already logged in
+    const loggedInUser = sessionStorage.getItem('userId');
+    if (loggedInUser) {
+      window.location.href = "user-dashboard.html";
+    }
+
+    // Initialize form validation
+    const form = document.getElementById("loginForm");
+    if (form) {
+      form.querySelectorAll("input").forEach((inp) => {
+        inp.addEventListener("blur", () => validateField(inp));
+        inp.addEventListener("input", () => {
+          if (inp.closest(".field").classList.contains("error")) validateField(inp);
+        });
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        // Validate all fields
+        let ok = true;
+        form.querySelectorAll("input[required]").forEach((inp) => {
+          if (!validateField(inp)) ok = false;
+        });
+        if (!ok) {
+          const firstErr = form.querySelector(".field.error");
+          if (firstErr) firstErr.scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
+
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value.trim();
+
+        const loginBtn = document.getElementById('loginBtn');
+        const originalTxt = loginBtn.textContent;
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Logging in...";
+
+        try {
+          await loginUser(email, password);
+        } catch (err) {
+          console.error("Login error:", err);
+          alert("Login failed. Please try again.");
+        } finally {
+          loginBtn.disabled = false;
+          loginBtn.textContent = originalTxt;
+        }
+      });
+    }
+
+    async function loginUser(email, password) {
+      const client = initSupabase();
+      if (!client) {
+        alert("Database connection not available. Please try again later.");
+        return;
+      }
+
+      try {
+        console.log('Attempting login for:', email);
+        console.log('Password length:', password.length);
+
+        // Call verify_password function
+        const { data, error } = await client.rpc('verify_password', {
+          p_email: email,
+          p_password: password
+        });
+
+        console.log('Login result:', { data, error });
+
+        if (error) {
+          console.error('RPC error:', error);
+          alert("Login failed: " + error.message);
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          console.log('No user found with these credentials');
+          alert("Invalid email or password. Please check and try again.");
+          return;
+        }
+
+        const userData = data[0];
+        console.log('User data:', userData);
+
+        // Save to session storage
+        sessionStorage.setItem('userId', userData.user_id);
+        sessionStorage.setItem('userEmail', userData.email);
+        sessionStorage.setItem('isTempPassword', userData.is_temp_password);
+        sessionStorage.setItem('themePreference', userData.theme_preference || 'light');
+
+        // Update last login
+        await client.from('user_accounts')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', userData.user_id);
+
+        console.log('Login successful, redirecting...');
+        // Redirect to dashboard
+        window.location.href = "user-dashboard.html";
+
+      } catch (err) {
+        console.error("Login error:", err);
+        alert(`Login failed: ${err.message || 'Unknown error'}`);
+      }
+    }
+  </script>
+</body>
+</html>

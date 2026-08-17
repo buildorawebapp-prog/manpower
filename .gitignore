@@ -1,0 +1,46 @@
+# Environment variables (NEVER commit real .env)
+.env
+.env.local
+.env.production
+
+# Supabase service role key (if you have one)
+supabase-service-key.txt
+service-role.json
+
+# Node modules (if using build tools)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+dist/
+build/
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.sublime-*
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Database dumps
+*.sql.backup
+*.dump
+
+# API keys / credentials
+*-credentials.json
+api-keys.txt
+secrets.txt

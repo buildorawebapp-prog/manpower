@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Employer Details — Go Hire Consultancy Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css?v=7" />
+</head>
+<body class="admin-body">
+  <div class="admin-shell">
+    <!-- SIDEBAR -->
+    <aside class="admin-side">
+      <a href="../index.html" class="brand">
+        <span class="brand-logo"></span>
+        <span>Go Hire Consultancy<small>Admin</small></span>
+      </a>
+      <nav class="admin-nav">
+        <a href="dashboard.html">📊 Dashboard</a>
+        <a class="active">🏢 Employer Details</a>
+        <a href="#" onclick="window.history.back();return false" style="margin-top:20px;color:#ffb84d">← Back</a>
+        <a href="#" onclick="logout();return false" style="margin-top:auto;color:#ff9d9d">↩ Logout</a>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="admin-main">
+      <div class="admin-top">
+        <h1 id="pageTitle">Employer Details</h1>
+        <div class="who">
+          <span>Admin</span>
+          <div class="avatar">A</div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loadingState" class="panel">
+        <div style="text-align:center; padding:60px; color:var(--muted);">
+          <div style="font-size:48px; margin-bottom:16px;">⏳</div>
+          <p>Loading employer details...</p>
+        </div>
+      </div>
+
+      <!-- Content (hidden until loaded) -->
+      <div id="contentArea" class="hide">
+        <div class="detail-grid-admin">
+          <!-- Left: Employer Info -->
+          <div>
+            <div class="panel">
+              <div class="panel-head">
+                <h3>Employer Information</h3>
+                <div id="statusBadge"></div>
+              </div>
+              <div style="padding:22px">
+                <div class="detail-section">
+                  <div class="detail-label">Tracking Token</div>
+                  <div class="detail-value" style="font-size:20px; font-weight:800; color:var(--saffron); letter-spacing:0.05em;">
+                    <span id="detailToken"></span>
+                    <button class="mini-btn" onclick="copyToken()" style="margin-left:12px">📋 Copy</button>
+                  </div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-label">Company Name</div>
+                  <div class="detail-value" id="detailCompany"></div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-label">Contact Person</div>
+                  <div class="detail-value" id="detailContact"></div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-label">Email</div>
+                  <div class="detail-value" id="detailEmail"></div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-label">Phone Number</div>
+                  <div class="detail-value">
+                    <span id="detailPhone"></span>
+                    <a id="detailPhoneCall" class="mini-btn" style="margin-left:12px">📞 Call</a>
+                  </div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-label">Trade Needed</div>
+                  <div class="detail-value" id="detailTrade"></div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-label">Number of Workers</div>
+                  <div class="detail-value" id="detailWorkers"></div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-label">Work Location</div>
+                  <div class="detail-value" id="detailLocation"></div>
+                </div>
+
+                <div class="detail-section" id="detailMessageSection">
+                  <div class="detail-label">Requirement Details</div>
+                  <div class="detail-value" id="detailMessage"></div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-label">Submitted On</div>
+                  <div class="detail-value" id="detailDate"></div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-label">Change Status</div>
+                  <div class="detail-value">
+                    <select id="statusSelect" class="mini-btn" style="padding:10px 14px; font-size:14px;" onchange="updateStatus()">
+                      <option value="new">New - Under Review</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                    <span id="statusSaveNote" class="hide" style="margin-left:12px; font-weight:700; color:var(--green);">✓ Updated</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Chat Panel -->
+          <div>
+            <div class="panel" style="height:100%">
+              <div class="panel-head">
+                <h3>Chat with Employer</h3>
+                <span id="unreadBadge" class="hide" style="background:var(--green); color:#fff; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:800;"></span>
+              </div>
+
+              <div class="admin-chat-container">
+                <div class="admin-chat-messages" id="chatMessages">
+                  <div class="chat-empty">No messages yet.</div>
+                </div>
+
+                <div class="admin-chat-input-area">
+                  <textarea
+                    id="chatInput"
+                    class="admin-chat-input"
+                    rows="3"
+                    placeholder="Type your message to the employer..."
+                  ></textarea>
+                  <button id="sendBtn" class="btn btn-primary" onclick="sendMessage()">Send Reply</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/supabase.js?v=3"></script>
+  <script src="detail.js?v=1"></script>
+  <script>
+    const SUBMISSION_TYPE = 'employer';
+    initDetailPage(SUBMISSION_TYPE);
+
+    async function logout() {
+      const client = initSupabase();
+      await client.auth.signOut();
+      window.location.href = "login.html";
+    }
+  </script>
+</body>
+</html>

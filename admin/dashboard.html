@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Go Hire Consultancy Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css?v=5" />
+</head>
+<body class="admin-body">
+  <div class="admin-shell">
+    <!-- SIDEBAR -->
+    <aside class="admin-side">
+      <a href="../index.html" class="brand">
+        <span class="brand-logo"></span>
+        <span>Go Hire Consultancy<small>Admin</small></span>
+      </a>
+      <nav class="admin-nav">
+        <a class="active" data-title="Dashboard" onclick="showView('dash', this)">📊 Dashboard</a>
+        <a data-title="Candidate Applications" onclick="showView('cand', this)">👷 Candidates</a>
+        <a data-title="Employer Requests" onclick="showView('emp', this)">🏢 Employers</a>
+        <a data-title="Locations" onclick="showView('loc', this)">📍 Locations</a>
+        <a data-title="Trades" onclick="showView('trade', this)">🛠️ Trades</a>
+        <a data-title="Contact Settings" onclick="showView('set', this)">⚙️ Settings</a>
+        <a href="#" onclick="logout();return false" style="margin-top:20px;color:#ff9d9d">↩ Logout</a>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="admin-main">
+      <div class="admin-top">
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="who">
+          <span>Admin</span>
+          <div class="avatar">A</div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <section id="view-dash" class="adm-view">
+        <div class="stat-row">
+          <div class="stat"><div class="k">Total Candidates</div><div class="v" id="statCand">0</div><div class="trend">▲ live</div></div>
+          <div class="stat"><div class="k">Employer Requests</div><div class="v" id="statEmp">0</div><div class="trend">▲ live</div></div>
+          <div class="stat"><div class="k">New / Unread</div><div class="v" id="statNew">0</div><div class="trend">needs action</div></div>
+          <div class="stat"><div class="k">Active Locations</div><div class="v" id="statLoc">0</div><div class="trend">live</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Recent Candidates</h3><a class="mini-btn" onclick="showView('cand', document.querySelectorAll('.admin-nav a')[1])">View all</a></div>
+          <table class="table">
+            <thead><tr><th>Name</th><th>Phone</th><th>Trade</th><th>Experience</th><th>Location</th><th>Status</th><th>Date</th><th></th></tr></thead>
+            <tbody id="candBodyMini"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- CANDIDATES -->
+      <section id="view-cand" class="adm-view hide">
+        <div class="panel">
+          <div class="panel-head"><h3>Candidate Applications (<span id="candCount">0</span>)</h3></div>
+          <div style="overflow-x:auto">
+            <table class="table">
+              <thead><tr><th>Name</th><th>Phone</th><th>Trade</th><th>Experience</th><th>Location</th><th>Status</th><th>Date</th><th></th></tr></thead>
+              <tbody id="candBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- EMPLOYERS -->
+      <section id="view-emp" class="adm-view hide">
+        <div class="panel">
+          <div class="panel-head"><h3>Employer Requests (<span id="empCount">0</span>)</h3></div>
+          <div style="overflow-x:auto">
+            <table class="table">
+              <thead><tr><th>Company</th><th>Contact</th><th>Phone</th><th>Trade</th><th>Workers</th><th>Location</th><th>Status</th><th></th></tr></thead>
+              <tbody id="empBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOCATIONS -->
+      <section id="view-loc" class="adm-view hide">
+        <div class="panel">
+          <div class="panel-head"><h3>Available Locations</h3></div>
+          <div style="padding:22px">
+            <p style="color:var(--muted);margin-bottom:16px">These locations appear in the public search. Add or remove any time.</p>
+            <div style="display:flex;gap:10px;margin-bottom:20px;max-width:420px">
+              <input id="newLoc" class="mini-btn" style="flex:1;padding:11px 14px" placeholder="Add a city / location" onkeydown="if(event.key==='Enter')addLocation()" />
+              <button class="btn btn-primary" onclick="addLocation()">+ Add</button>
+            </div>
+            <div class="chip-list" id="locChips"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRADES -->
+      <section id="view-trade" class="adm-view hide">
+        <div class="panel">
+          <div class="panel-head"><h3>Add a Trade / Service</h3></div>
+          <div style="padding:22px">
+            <p style="color:var(--muted);margin-bottom:16px">Add the trade name, a short detail, an emoji icon and a photo. Everything you add here shows on the public website.</p>
+            <div class="trade-form">
+              <div class="field"><label>Trade name *</label><input id="tName" placeholder="e.g. Carpenters" /></div>
+              <div class="field"><label>Icon (emoji)</label><input id="tIcon" placeholder="🪚" maxlength="4" /></div>
+              <div class="field trade-form-wide"><label>Short details</label><input id="tDesc" placeholder="e.g. Woodwork, framing & finishing." /></div>
+              <div class="field trade-form-wide">
+                <label>Photo</label>
+                <div class="upload-row">
+                  <img id="tPreview" class="upload-preview hide" alt="preview" />
+                  <input id="tFile" type="file" accept="image/*" onchange="previewTradeFile(this)" />
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:6px">
+              <button class="btn btn-primary" id="tAddBtn" onclick="addTrade()">+ Add Trade</button>
+              <span id="tAddNote" class="hide" style="font-weight:700"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:22px">
+          <div class="panel-head"><h3>Current Trades (<span id="tradeCount">0</span>)</h3></div>
+          <div style="padding:22px">
+            <div class="trade-admin-grid" id="tradeCards"></div>
+          </div>
+        </div>
+      </section>
+      <input id="changePhotoFile" type="file" accept="image/*" class="hide" onchange="onChangePhoto(this)" />
+
+      <!-- SETTINGS -->
+      <section id="view-set" class="adm-view hide">
+        <div class="panel">
+          <div class="panel-head"><h3>Contact Settings</h3></div>
+          <div style="padding:22px">
+            <p style="color:var(--muted);margin-bottom:18px">These numbers power the Call / WhatsApp buttons on the whole website.</p>
+            <div class="setting-grid">
+              <div class="field"><label>Phone Number</label><input id="setPhone" /></div>
+              <div class="field"><label>WhatsApp Number</label><input id="setWhatsapp" /></div>
+              <div class="field"><label>Email</label><input id="setEmail" /></div>
+              <div class="field"><label>Company Name</label><input id="setCompany" /></div>
+            </div>
+            <div class="field"><label>Address</label><input id="setAddress" /></div>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:10px">
+              <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
+              <span id="saveNote" class="hide" style="color:var(--green);font-weight:700">✓ Saved</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/supabase.js?v=3"></script>
+  <script src="admin.js?v=5"></script>
+  <script>
+    initAdmin();
+  </script>
+</body>
+</html>

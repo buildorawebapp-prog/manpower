@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Check Application Status — Go Hire Consultancy</title>
+  <meta name="description" content="Track your application or hiring request status with your email and tracking token." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=6" />
+</head>
+<body>
+  <div id="header-slot"></div>
+
+  <section class="page-hero" style="background: linear-gradient(135deg, var(--navy-800), var(--navy-900));">
+    <div class="container">
+      <h1 style="color: #fff;" data-i18n="status.title"></h1>
+      <p style="color: rgba(255,255,255,0.85);" data-i18n="status.sub"></p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <!-- Status Lookup Form -->
+      <div class="form-wrap status-lookup" id="lookupSection">
+        <div class="form-card">
+          <form id="statusForm" novalidate>
+            <div class="field">
+              <label><span data-i18n="status.email"></span> <span class="req">*</span></label>
+              <input type="email" name="email" data-type="email" required placeholder="your@email.com" />
+              <div class="err-msg"></div>
+            </div>
+
+            <div class="field">
+              <label><span data-i18n="status.token"></span> <span class="req">*</span></label>
+              <input type="text" name="token" required placeholder="XXXXXXXX" style="text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;" maxlength="8" />
+              <div class="err-msg"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg btn-block" data-i18n="status.submit"></button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div id="resultsSection" class="hide">
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h2 class="section-title" data-i18n="dash.title"></h2>
+          <button class="btn btn-ghost" onclick="backToLookup()" style="margin-top: 12px;" data-i18n="dash.logout"></button>
+        </div>
+
+        <div class="submissions-list" id="submissionsList"></div>
+
+        <div id="noSubmissions" class="hide" style="text-align: center; padding: 60px 20px;">
+          <div style="font-size: 64px; opacity: 0.3; margin-bottom: 16px;">📋</div>
+          <p style="color: var(--muted); font-size: 16px;" data-i18n="status.nosubmissions"></p>
+          <button class="btn btn-navy" onclick="backToLookup()" style="margin-top: 20px;">Try Again</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-slot"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js?v=3"></script>
+  <script src="js/i18n.js?v=4"></script>
+  <script src="js/app.js?v=3"></script>
+  <script src="js/forms.js?v=4"></script>
+  <script>
+    initShell("status.html");
+    applyLang(getLang());
+
+    // Initialize form validation
+    const form = document.getElementById("statusForm");
+    if (form) {
+      form.querySelectorAll("input, select, textarea").forEach((inp) => {
+        inp.addEventListener("blur", () => validateField(inp));
+        inp.addEventListener("input", () => {
+          if (inp.closest(".field").classList.contains("error")) validateField(inp);
+        });
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        let ok = true;
+        form.querySelectorAll("input[required]").forEach((inp) => {
+          if (!validateField(inp)) ok = false;
+        });
+        if (!ok) {
+          const firstErr = form.querySelector(".field.error");
+          if (firstErr) firstErr.scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
+
+        const email = form.querySelector('[name="email"]').value.trim();
+        const token = form.querySelector('[name="token"]').value.trim().toUpperCase();
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalTxt = submitBtn ? submitBtn.textContent : "";
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "..."; }
+
+        try {
+          await lookupSubmissions(email, token);
+        } finally {
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalTxt; }
+        }
+      });
+    }
+
+    async function lookupSubmissions(email, token) {
+      const client = initSupabase();
+      if (!client) {
+        alert("Database connection not available. Please try again later.");
+        return;
+      }
+
+      try {
+        // SECURITY FIX: Validate exact email + token combination first
+        // Try to find the exact submission with this email AND token
+        const { data: candidateMatch, error: candError } = await client
+          .from('candidates')
+          .select('*')
+          .eq('email', email)
+          .eq('tracking_token', token)
+          .maybeSingle();
+
+        const { data: employerMatch, error: empError } = await client
+          .from('employers')
+          .select('*')
+          .eq('email', email)
+          .eq('tracking_token', token)
+          .maybeSingle();
+
+        // Check if we found any valid match
+        const validMatch = candidateMatch || employerMatch;
+
+        if (!validMatch) {
+          // No matching email + token combination found
+          alert("Invalid email or token. Please check your credentials and try again.");
+          return;
+        }
+
+        // Valid match found! Now get all submissions for this email
+        const { data, error } = await client.rpc('get_all_submissions_by_email', { p_email: email });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          document.getElementById("lookupSection").classList.add("hide");
+          document.getElementById("resultsSection").classList.remove("hide");
+          document.getElementById("noSubmissions").classList.remove("hide");
+          return;
+        }
+
+        // Store email for the dashboard
+        sessionStorage.setItem('userEmail', email);
+        sessionStorage.setItem('validatedToken', token);
+
+        // Show all submissions for this email
+        displaySubmissions(data, email);
+        document.getElementById("lookupSection").classList.add("hide");
+        document.getElementById("resultsSection").classList.remove("hide");
+
+      } catch (err) {
+        console.error("Lookup error:", err);
+        alert("Could not fetch submissions. Please check your email and token.");
+      }
+    }
+
+    function displaySubmissions(submissions, email) {
+      const list = document.getElementById("submissionsList");
+      list.innerHTML = "";
+
+      submissions.forEach(sub => {
+        const card = document.createElement("div");
+        card.className = "submission-card";
+        card.onclick = () => openDashboard(sub.submission_type, sub.submission_id, sub.tracking_token);
+
+        const statusClass = getStatusClass(sub.status);
+        const statusText = t(`status.${sub.status}`) || sub.status;
+
+        card.innerHTML = `
+          <div class="submission-header">
+            <div class="submission-info">
+              <h3>${sub.summary}</h3>
+              <p>${formatDate(sub.created_at)}</p>
+            </div>
+            <span class="badge ${statusClass}">${statusText}</span>
+          </div>
+          <div class="submission-meta">
+            <div><strong data-i18n="dash.token"></strong>: ${sub.tracking_token}</div>
+            <div><strong data-i18n="dash.status"></strong>: ${statusText}</div>
+          </div>
+        `;
+
+        list.appendChild(card);
+      });
+
+      applyLang(getLang());
+    }
+
+    function getStatusClass(status) {
+      const map = {
+        'new': 'badge-new',
+        'contacted': 'badge-contacted',
+        'hired': 'badge-hired',
+        'rejected': 'badge-rejected',
+        'closed': 'badge-closed'
+      };
+      return map[status] || 'badge-new';
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return d.toLocaleDateString('en-US', options);
+    }
+
+    function openDashboard(type, id, token) {
+      // Redirect to dashboard with params
+      window.location.href = `dashboard.html?type=${type}&id=${id}&token=${token}`;
+    }
+
+    function backToLookup() {
+      document.getElementById("lookupSection").classList.remove("hide");
+      document.getElementById("resultsSection").classList.add("hide");
+      document.getElementById("noSubmissions").classList.add("hide");
+      document.getElementById("statusForm").reset();
+    }
+  </script>
+</body>
+</html>

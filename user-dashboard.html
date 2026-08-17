@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Dashboard — Go Hire Consultancy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=9" />
+  <style>
+    /* Dark theme styles */
+    body.dark-theme {
+      --ink: #e8eaed;
+      --navy-900: #e8eaed;
+      --navy-800: #d3d6db;
+      --muted: #9aa0a6;
+      --line: #3c4043;
+      --bg: #0f131c;
+      --surface-1: #161d2b;
+      --surface-2: #1e2636;
+      --surface-3: #252d3e;
+      background: #0f131c;
+      color: #e8eaed;
+    }
+    body.dark-theme .user-dashboard-shell {
+      background: #0f131c;
+    }
+    body.dark-theme .dashboard-sidebar {
+      background: #161d2b;
+      border-color: #252d3e;
+    }
+    body.dark-theme .submission-item {
+      background: #1e2636;
+      border-color: #252d3e;
+    }
+    body.dark-theme .submission-item:hover {
+      background: #252d3e;
+      border-color: rgba(255, 138, 30, 0.4);
+      transform: translateX(4px);
+    }
+    body.dark-theme .submission-item.active {
+      background: #252d3e;
+      border-color: var(--saffron);
+    }
+    body.dark-theme .dashboard-main {
+      background: #0f131c;
+    }
+    body.dark-theme .detail-card {
+      background: #161d2b;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-section {
+      background: #161d2b;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-messages {
+      background: #0f131c;
+    }
+    body.dark-theme .chat-input-area {
+      background: #161d2b;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-input {
+      background: #1e2636;
+      border-color: #252d3e;
+      color: #e8eaed;
+    }
+    body.dark-theme .chat-message.user .chat-bubble {
+      background: #1e2636;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-message.admin .chat-bubble {
+      background: rgba(255, 138, 30, 0.15);
+      border-color: rgba(255, 138, 30, 0.3);
+    }
+    body.dark-theme .detail-value {
+      color: #e8eaed;
+    }
+    body.dark-theme .submission-title {
+      color: #e8eaed;
+    }
+    body.dark-theme .chat-bubble-text {
+      color: #e8eaed;
+    }
+    body.dark-theme .empty-state {
+      color: #9aa0a6;
+    }
+    body.dark-theme .empty-state h3 {
+      color: #d3d6db;
+    }
+
+    /* Scrollbar styling */
+    .chat-messages::-webkit-scrollbar {
+      width: 8px;
+    }
+    .chat-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: var(--line);
+      border-radius: 999px;
+    }
+    .chat-messages::-webkit-scrollbar-thumb:hover {
+      background: var(--muted);
+    }
+
+    /* User Dashboard Layout */
+    .user-dashboard-shell {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      min-height: 100vh;
+      background: var(--bg);
+    }
+
+    .dashboard-sidebar {
+      background: #fff;
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .dashboard-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(135deg, #0b1b3a, #10254d);
+      color: #fff;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--saffron);
+      color: #2a1600;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 20px;
+    }
+
+    .user-details h3 {
+      color: #fff;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .user-details p {
+      color: rgba(255,255,255,0.7);
+      font-size: 13px;
+    }
+
+    .dashboard-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .theme-toggle {
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 20px;
+      transition: all 0.2s;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .submissions-list {
+      padding: 16px;
+      flex: 1;
+    }
+
+    .submissions-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .submissions-header h3 {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .submission-item {
+      padding: 16px;
+      margin-bottom: 12px;
+      background: #fff;
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .submission-item:hover {
+      border-color: var(--saffron);
+      transform: translateX(4px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .submission-item.active {
+      border-color: var(--saffron);
+      background: var(--amber-100);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .submission-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 8px;
+    }
+
+    .submission-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+      gap: 8px;
+    }
+
+    .sidebar-footer {
+      padding: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .dashboard-main {
+      padding: 32px;
+      overflow-y: auto;
+      background: var(--bg);
+    }
+
+    .main-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .detail-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .detail-card h2 {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 24px;
+      color: var(--navy-900);
+    }
+
+    .detail-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+      gap: 20px;
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .detail-value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--navy-900);
+    }
+
+    .chat-section {
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 600px;
+    }
+
+    .chat-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(135deg, #0b1b3a, #10254d);
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .chat-header h3 {
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .chat-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .chat-message {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .chat-message.admin {
+      flex-direction: row;
+    }
+
+    .chat-message.user {
+      flex-direction: row-reverse;
+    }
+
+    .chat-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .chat-message.admin .chat-avatar {
+      background: linear-gradient(135deg, var(--navy-700), var(--navy-900));
+      color: #fff;
+    }
+
+    .chat-message.user .chat-avatar {
+      background: var(--saffron);
+      color: #2a1600;
+    }
+
+    .chat-bubble {
+      max-width: 65%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .chat-message.admin .chat-bubble {
+      border-radius: 16px 16px 16px 4px;
+      background: #fff;
+    }
+
+    .chat-message.user .chat-bubble {
+      border-radius: 16px 16px 4px 16px;
+      background: var(--amber-100);
+      border-color: rgba(255, 138, 30, 0.2);
+    }
+
+    .chat-bubble-text {
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--ink);
+      word-wrap: break-word;
+    }
+
+    .chat-time {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    .chat-input-area {
+      padding: 20px 24px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+      flex-shrink: 0;
+    }
+
+    .chat-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      font-family: var(--font);
+      font-size: 15px;
+      resize: vertical;
+      transition: border-color 0.2s;
+      background: var(--bg);
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: var(--saffron);
+    }
+
+    .chat-input-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state .icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+
+    @media (max-width: 968px) {
+      .user-dashboard-shell {
+        grid-template-columns: 1fr;
+        position: relative;
+      }
+      .dashboard-sidebar {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        bottom: 0;
+        width: 280px;
+        z-index: 1000;
+        display: block;
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+      }
+      .dashboard-sidebar.mobile-open {
+        left: 0;
+      }
+      .mobile-menu-toggle {
+        display: block !important;
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 999;
+        background: var(--saffron);
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      }
+      .mobile-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+      }
+      .mobile-overlay.active {
+        display: block;
+      }
+      .dashboard-main {
+        padding: 80px 16px 32px;
+      }
+      .detail-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .chat-bubble {
+        max-width: 80%;
+      }
+      .chat-section {
+        height: 500px;
+      }
+    }
+    .mobile-menu-toggle {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Mobile Menu Toggle -->
+  <button class="mobile-menu-toggle" onclick="toggleMobileSidebar()" aria-label="Toggle Menu">
+    <span style="font-size:20px;">☰</span>
+  </button>
+
+  <!-- Mobile Overlay -->
+  <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+
+  <div class="user-dashboard-shell">
+    <!-- Sidebar -->
+    <aside class="dashboard-sidebar" id="dashboardSidebar">
+      <div class="dashboard-header">
+        <div class="user-info">
+          <div class="user-avatar" id="userAvatar">U</div>
+          <div class="user-details">
+            <h3 id="userName">User</h3>
+            <p id="userEmail">email@example.com</p>
+          </div>
+        </div>
+        <div class="dashboard-controls">
+          <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" id="themeBtn">🌙</button>
+          <button class="btn btn-ghost" onclick="logout()" style="padding:8px 14px; font-size:13px;">Logout</button>
+        </div>
+      </div>
+
+      <div class="submissions-list">
+        <div class="submissions-header">
+          <h3>📋 My Applications</h3>
+        </div>
+        <div id="submissionsList">
+          <div style="text-align:center; padding:40px 20px; color:var(--muted);">
+            Loading...
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="btn btn-navy btn-block" onclick="showChangePassword()">🔑 Change Password</button>
+        <a href="apply.html" class="btn btn-ghost btn-block" style="margin-top:8px;">+ New Application</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+      <div class="main-header">
+        <h1>My Dashboard</h1>
+      </div>
+
+      <div id="mainContent">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <h3>Select an application</h3>
+          <p>Choose an application from the sidebar to view details and chat</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div id="passwordModal" class="modal" style="display:none;">
+    <div class="modal-overlay" onclick="closePasswordModal()"></div>
+    <div class="modal-content">
+      <h3>🔑 Change Password</h3>
+      <form id="passwordForm" style="margin-top:20px;">
+        <div class="field">
+          <label>Current Password</label>
+          <input type="password" id="currentPassword" required />
+        </div>
+        <div class="field">
+          <label>New Password</label>
+          <input type="password" id="newPassword" required minlength="6" />
+        </div>
+        <div class="field">
+          <label>Confirm New Password</label>
+          <input type="password" id="confirmPassword" required />
+        </div>
+        <div style="display:flex; gap:12px; margin-top:20px;">
+          <button type="button" class="btn btn-ghost" onclick="closePasswordModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
+  <script>
+    let currentUserId = null;
+    let currentUserEmail = null;
+    let submissions = [];
+    let selectedSubmission = null;
+
+    // Check login on load
+    window.addEventListener('DOMContentLoaded', async () => {
+      currentUserId = sessionStorage.getItem('userId');
+      currentUserEmail = sessionStorage.getItem('userEmail');
+      const theme = sessionStorage.getItem('themePreference') || 'light';
+
+      if (!currentUserId || !currentUserEmail) {
+        alert('Please login first');
+        window.location.href = 'login.html';
+        return;
+      }
+
+      // Apply theme
+      if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+        document.getElementById('themeBtn').textContent = '☀️';
+      }
+
+      // Show user info
+      document.getElementById('userEmail').textContent = currentUserEmail;
+      document.getElementById('userName').textContent = currentUserEmail.split('@')[0];
+      document.getElementById('userAvatar').textContent = currentUserEmail.charAt(0).toUpperCase();
+
+      // Load submissions
+      await loadSubmissions();
+    });
+
+    async function loadSubmissions() {
+      const client = initSupabase();
+      if (!client) return;
+
+      try {
+        const { data, error } = await client.rpc('get_user_submissions', {
+          p_user_id: currentUserId
+        });
+
+        console.log('Submissions loaded:', { data, error });
+
+        if (error) throw error;
+
+        submissions = data || [];
+        renderSubmissions();
+      } catch (err) {
+        console.error('Error loading submissions:', err);
+        alert('Could not load your applications');
+      }
+    }
+
+    function renderSubmissions() {
+      const list = document.getElementById('submissionsList');
+
+      if (submissions.length === 0) {
+        list.innerHTML = `
+          <div style="text-align:center; padding:40px 20px; color:var(--muted);">
+            <div style="font-size:48px; margin-bottom:12px;">📝</div>
+            <p>No applications yet</p>
+            <a href="apply.html" class="btn btn-primary" style="margin-top:16px;">Apply Now</a>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = submissions.map((sub, idx) => {
+        const statusIcon = sub.status === 'new' ? '✅' :
+                          sub.status === 'contacted' ? '⏳' :
+                          sub.status === 'rejected' ? '❌' : '📋';
+        return `
+        <div class="submission-item ${idx === 0 ? 'active' : ''}" onclick="selectSubmission('${sub.submission_id}')">
+          <div class="submission-title">${statusIcon} ${sub.trade} - ${sub.location}</div>
+          <div class="submission-meta">
+            <span class="badge badge-${sub.status}">${sub.status}</span>
+            <span>${formatDate(sub.created_at)}</span>
+          </div>
+        </div>
+      `}).join('');
+
+      // Auto-select first submission
+      if (submissions.length > 0) {
+        selectSubmission(submissions[0].submission_id);
+      }
+    }
+
+    async function selectSubmission(id) {
+      selectedSubmission = submissions.find(s => s.submission_id === id);
+      if (!selectedSubmission) return;
+
+      // Update active state
+      document.querySelectorAll('.submission-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      event.target.closest('.submission-item').classList.add('active');
+
+      await loadSubmissionDetails(selectedSubmission);
+    }
+
+    async function loadSubmissionDetails(sub) {
+      const client = initSupabase();
+      const tableName = sub.submission_type === 'candidate' ? 'candidates' : 'employers';
+
+      try {
+        const { data, error } = await client
+          .from(tableName)
+          .select('*')
+          .eq('id', sub.submission_id)
+          .single();
+
+        if (error) throw error;
+
+        displaySubmissionDetails(data, sub.submission_type);
+        await loadChat(sub.submission_type, sub.submission_id);
+      } catch (err) {
+        console.error('Error loading details:', err);
+      }
+    }
+
+    function displaySubmissionDetails(data, type) {
+      const main = document.getElementById('mainContent');
+      let detailsHTML = '';
+
+      if (type === 'candidate') {
+        detailsHTML = `
+          <div class="detail-card">
+            <h2>📋 Application Details</h2>
+            <div class="detail-row">
+              <div class="detail-label">Token</div>
+              <div class="detail-value" style="font-family:monospace; font-size:18px; color:var(--saffron); font-weight:800;">${data.tracking_token}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Status</div>
+              <div class="detail-value"><span class="badge badge-${data.status}">${data.status}</span></div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Full Name</div>
+              <div class="detail-value">${data.full_name}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Phone</div>
+              <div class="detail-value">${data.phone}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Trade</div>
+              <div class="detail-value">${data.trade}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Experience</div>
+              <div class="detail-value">${data.experience || 'N/A'}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Location</div>
+              <div class="detail-value">${data.location}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Submitted</div>
+              <div class="detail-value">${formatDateTime(data.created_at)}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        detailsHTML = `
+          <div class="detail-card">
+            <h2>💼 Hiring Request Details</h2>
+            <div class="detail-row">
+              <div class="detail-label">Token</div>
+              <div class="detail-value" style="font-family:monospace; font-size:18px; color:var(--saffron); font-weight:800;">${data.tracking_token}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Status</div>
+              <div class="detail-value"><span class="badge badge-${data.status}">${data.status}</span></div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Company</div>
+              <div class="detail-value">${data.company_name}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Contact Person</div>
+              <div class="detail-value">${data.contact_person}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Phone</div>
+              <div class="detail-value">${data.phone}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Trade Needed</div>
+              <div class="detail-value">${data.trade_needed}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Workers Needed</div>
+              <div class="detail-value">${data.workers_count || 'N/A'}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Location</div>
+              <div class="detail-value">${data.location}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Submitted</div>
+              <div class="detail-value">${formatDateTime(data.created_at)}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      main.innerHTML = detailsHTML + `
+        <div class="chat-section">
+          <div class="chat-header">
+            <h3>💬 Chat with Admin</h3>
+          </div>
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-empty">Loading messages...</div>
+          </div>
+          <div class="chat-input-area">
+            <textarea id="chatInput" class="chat-input" rows="3" placeholder="Type your message here..."></textarea>
+            <div class="chat-input-buttons">
+              <button id="sendBtn" class="btn btn-primary" onclick="sendMessage()">
+                <span>Send Message</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadChat(type, id) {
+      const client = initSupabase();
+
+      try {
+        const { data, error } = await client
+          .from('chat_messages')
+          .select('*')
+          .eq('submission_type', type)
+          .eq('submission_id', id)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        displayChat(data || []);
+
+        // Auto-refresh every 10s
+        setTimeout(() => {
+          if (selectedSubmission && selectedSubmission.submission_id === id) {
+            loadChat(type, id);
+          }
+        }, 10000);
+      } catch (err) {
+        console.error('Error loading chat:', err);
+      }
+    }
+
+    function displayChat(messages) {
+      const container = document.getElementById('chatMessages');
+      if (!container) return;
+
+      if (messages.length === 0) {
+        container.innerHTML = '<div class="chat-empty">💬 No messages yet. Start a conversation!</div>';
+        return;
+      }
+
+      container.innerHTML = messages.map(msg => `
+        <div class="chat-message ${msg.sender_type}">
+          <div class="chat-avatar">${msg.sender_type === 'user' ? currentUserEmail.charAt(0).toUpperCase() : 'A'}</div>
+          <div class="chat-bubble">
+            <div class="chat-bubble-text">${escapeHtml(msg.message)}</div>
+            <div class="chat-time">${formatTime(msg.created_at)}</div>
+          </div>
+        </div>
+      `).join('');
+
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendMessage() {
+      if (!selectedSubmission) return;
+
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      if (!message) return;
+
+      const client = initSupabase();
+      const sendBtn = document.getElementById('sendBtn');
+      sendBtn.disabled = true;
+
+      try {
+        const { error } = await client.from('chat_messages').insert({
+          submission_type: selectedSubmission.submission_type,
+          submission_id: selectedSubmission.submission_id,
+          sender_type: 'user',
+          message: message
+        });
+
+        if (error) throw error;
+
+        input.value = '';
+        await loadChat(selectedSubmission.submission_type, selectedSubmission.submission_id);
+      } catch (err) {
+        console.error('Error sending message:', err);
+        alert('Could not send message');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.body.classList.toggle('dark-theme');
+      const theme = isDark ? 'dark' : 'light';
+      const btn = document.getElementById('themeBtn');
+      btn.textContent = isDark ? '☀️' : '🌙';
+
+      sessionStorage.setItem('themePreference', theme);
+
+      // Save to database
+      const client = initSupabase();
+      client.rpc('update_theme_preference', {
+        p_user_id: currentUserId,
+        p_theme: theme
+      });
+    }
+
+    function showChangePassword() {
+      document.getElementById('passwordModal').style.display = 'flex';
+    }
+
+    function closePasswordModal() {
+      document.getElementById('passwordModal').style.display = 'none';
+      document.getElementById('passwordForm').reset();
+    }
+
+    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const current = document.getElementById('currentPassword').value;
+      const newPwd = document.getElementById('newPassword').value;
+      const confirm = document.getElementById('confirmPassword').value;
+
+      if (newPwd !== confirm) {
+        alert('New passwords do not match');
+        return;
+      }
+
+      if (newPwd.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+      }
+
+      const client = initSupabase();
+
+      try {
+        const { data, error } = await client.rpc('change_user_password', {
+          p_user_id: currentUserId,
+          p_current_password: current,
+          p_new_password: newPwd
+        });
+
+        if (error) throw error;
+
+        const result = data[0];
+        if (result.success) {
+          alert('Password updated successfully!');
+          closePasswordModal();
+          sessionStorage.setItem('isTempPassword', 'false');
+        } else {
+          alert(result.message || 'Password change failed');
+        }
+      } catch (err) {
+        console.error('Error changing password:', err);
+        alert('Could not change password');
+      }
+    });
+
+    function logout() {
+      sessionStorage.clear();
+      window.location.href = 'login.html';
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatDateTime(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function formatTime(dateStr) {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now - d;
+      const diffMins = Math.floor(diffMs / 60000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+
+      return formatDate(dateStr);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Mobile sidebar toggle functions
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById('dashboardSidebar');
+      const overlay = document.getElementById('mobileOverlay');
+      sidebar.classList.toggle('mobile-open');
+      overlay.classList.toggle('active');
+    }
+
+    function closeMobileSidebar() {
+      const sidebar = document.getElementById('dashboardSidebar');
+      const overlay = document.getElementById('mobileOverlay');
+      sidebar.classList.remove('mobile-open');
+      overlay.classList.remove('active');
+    }
+  </script>
+
+  <style>
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      position: relative;
+      background: #fff;
+      padding: 32px;
+      border-radius: 16px;
+      max-width: 480px;
+      width: 90%;
+      box-shadow: var(--shadow-lg);
+    }
+    body.dark-theme .modal-content {
+      background: #292a2d;
+    }
+  </style>
+</body>
+</html>

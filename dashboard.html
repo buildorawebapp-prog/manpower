@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Dashboard — Go Hire Consultancy</title>
+  <meta name="description" content="View your submission status and chat with our admin team." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=6" />
+</head>
+<body>
+  <div id="header-slot"></div>
+
+  <section class="section" style="padding-top: 40px;">
+    <div class="container dashboard-container">
+      <div class="dash-header">
+        <h2 data-i18n="dash.title"></h2>
+        <p id="dashSubtitle"></p>
+      </div>
+
+      <div class="dash-grid">
+        <!-- Main Content - Submission Details -->
+        <div class="dash-main">
+          <h3 style="margin-bottom: 20px;" data-i18n="dash.details"></h3>
+          <div id="detailsContent">
+            <div style="text-align: center; padding: 40px; color: var(--muted);">
+              Loading...
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar - Chat -->
+        <div class="dash-sidebar">
+          <div class="chat-header">
+            <h3 data-i18n="dash.chat"></h3>
+          </div>
+
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-empty" data-i18n="dash.noMsgs"></div>
+          </div>
+
+          <div class="chat-input-area">
+            <textarea
+              id="chatInput"
+              class="chat-input"
+              rows="2"
+              data-i18n-ph="dash.typeMsg"
+            ></textarea>
+            <button id="sendBtn" class="chat-send" onclick="sendMessage()" data-i18n="dash.sendMsg"></button>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 32px;">
+        <a href="status.html" class="btn btn-ghost" data-i18n="dash.logout"></a>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-slot"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js?v=3"></script>
+  <script src="js/i18n.js?v=4"></script>
+  <script src="js/app.js?v=3"></script>
+  <script>
+    initShell("dashboard.html");
+    applyLang(getLang());
+
+    let submissionType = null;
+    let submissionId = null;
+    let submissionToken = null;
+    let submissionData = null;
+
+    // Parse URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    submissionType = urlParams.get('type');
+    submissionId = urlParams.get('id');
+    submissionToken = urlParams.get('token');
+
+    if (!submissionType || !submissionId || !submissionToken) {
+      alert("Invalid dashboard link. Please use the status page.");
+      window.location.href = "status.html";
+    }
+
+    // Initialize dashboard
+    async function initDashboard() {
+      await loadSubmissionDetails();
+      await loadChatMessages();
+
+      // Auto-refresh chat every 10 seconds
+      setInterval(loadChatMessages, 10000);
+    }
+
+    async function loadSubmissionDetails() {
+      const client = initSupabase();
+      if (!client) return;
+
+      try {
+        // SECURITY: Verify token matches before loading details
+        let query;
+        if (submissionType === 'candidate') {
+          query = client.from('candidates').select('*')
+            .eq('id', submissionId)
+            .eq('tracking_token', submissionToken)
+            .single();
+        } else if (submissionType === 'employer') {
+          query = client.from('employers').select('*')
+            .eq('id', submissionId)
+            .eq('tracking_token', submissionToken)
+            .single();
+        } else {
+          throw new Error('Invalid submission type');
+        }
+
+        const { data, error } = await query;
+
+        if (error || !data) {
+          alert("Submission not found or invalid token. Please verify your credentials.");
+          window.location.href = "status.html";
+          return;
+        }
+
+        // Additional security check: verify email matches
+        const validatedToken = sessionStorage.getItem('validatedToken');
+        if (validatedToken && validatedToken !== submissionToken) {
+          alert("Security error: Token mismatch. Please login again.");
+          window.location.href = "status.html";
+          return;
+        }
+
+        submissionData = data;
+        displaySubmissionDetails(data);
+      } catch (err) {
+        console.error("Error loading details:", err);
+        alert("Could not load submission details. Invalid access.");
+        window.location.href = "status.html";
+      }
+    }
+
+    function displaySubmissionDetails(data) {
+      const statusClass = getStatusClass(data.status);
+      const statusText = t(`status.${data.status}`) || data.status;
+
+      let html = `
+        <div style="margin-bottom: 20px; padding: 16px; background: var(--bg); border-radius: 12px; border-left: 4px solid var(--saffron);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase;">
+              ${submissionType === 'candidate' ? 'Candidate Application' : 'Hiring Request'}
+            </span>
+            <span class="badge ${statusClass}">${statusText}</span>
+          </div>
+          <div style="font-size: 24px; font-weight: 800; color: var(--navy-900); margin-bottom: 4px;">
+            ${submissionToken}
+          </div>
+          <div style="font-size: 13px; color: var(--muted);">
+            <span data-i18n="dash.submitted"></span>: ${formatDate(data.created_at)}
+          </div>
+        </div>
+      `;
+
+      if (submissionType === 'candidate') {
+        html += `
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.name"></span></div>
+            <div class="detail-value">${data.full_name}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.email"></span></div>
+            <div class="detail-value">${data.email}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.phone"></span></div>
+            <div class="detail-value">${data.phone}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.trade"></span></div>
+            <div class="detail-value">${data.trade}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.exp"></span></div>
+            <div class="detail-value">${data.experience || 'N/A'}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.location"></span></div>
+            <div class="detail-value">${data.location}</div>
+          </div>
+          ${data.message ? `
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.message"></span></div>
+            <div class="detail-value">${data.message}</div>
+          </div>
+          ` : ''}
+        `;
+
+        document.getElementById('dashSubtitle').textContent = `${data.full_name} - ${data.trade}`;
+      } else {
+        html += `
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.company"></span></div>
+            <div class="detail-value">${data.company_name}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.contact"></span></div>
+            <div class="detail-value">${data.contact_person}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.email"></span></div>
+            <div class="detail-value">${data.email}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.phone"></span></div>
+            <div class="detail-value">${data.phone}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.tradeNeed"></span></div>
+            <div class="detail-value">${data.trade_needed}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.count"></span></div>
+            <div class="detail-value">${data.workers_count || 'N/A'}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.locNeed"></span></div>
+            <div class="detail-value">${data.location}</div>
+          </div>
+          ${data.message ? `
+          <div class="detail-row">
+            <div class="detail-label"><span data-i18n="f.detail"></span></div>
+            <div class="detail-value">${data.message}</div>
+          </div>
+          ` : ''}
+        `;
+
+        document.getElementById('dashSubtitle').textContent = `${data.company_name} - Hiring ${data.trade_needed}`;
+      }
+
+      document.getElementById('detailsContent').innerHTML = html;
+      applyLang(getLang());
+    }
+
+    async function loadChatMessages() {
+      const client = initSupabase();
+      if (!client) return;
+
+      try {
+        console.log('Loading chat messages for:', {
+          submissionType,
+          submissionId,
+          submissionToken
+        });
+
+        // Direct query to chat_messages table
+        const { data, error } = await client
+          .from('chat_messages')
+          .select('*')
+          .eq('submission_type', submissionType)
+          .eq('submission_id', submissionId)
+          .order('created_at', { ascending: true });
+
+        console.log('Chat messages loaded:', { data, error });
+
+        if (error) {
+          console.error("Chat load error:", error);
+          return;
+        }
+
+        displayChatMessages(data || []);
+      } catch (err) {
+        console.error("Error loading chat:", err);
+      }
+    }
+
+    function displayChatMessages(messages) {
+      const container = document.getElementById('chatMessages');
+
+      if (messages.length === 0) {
+        container.innerHTML = '<div class="chat-empty" data-i18n="dash.noMsgs"></div>';
+        applyLang(getLang());
+        return;
+      }
+
+      container.innerHTML = '';
+      messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `chat-message ${msg.sender_type}`;
+
+        const avatarText = msg.sender_type === 'user' ? 'U' : 'A';
+        const senderLabel = msg.sender_type === 'user' ? t('dash.you') : t('dash.admin');
+
+        div.innerHTML = `
+          <div class="chat-avatar">${avatarText}</div>
+          <div class="chat-bubble">
+            <div class="chat-bubble-text">${escapeHtml(msg.message)}</div>
+            <div class="chat-time">${formatTime(msg.created_at)}</div>
+          </div>
+        `;
+
+        container.appendChild(div);
+      });
+
+      // Scroll to bottom
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+
+      if (!message) {
+        alert("Please type a message first.");
+        return;
+      }
+
+      const client = initSupabase();
+      if (!client) {
+        alert("Database connection not available. Please refresh the page.");
+        return;
+      }
+
+      // Debug: Check if we have valid data
+      console.log('Sending message with:', {
+        submissionType,
+        submissionId,
+        submissionToken,
+        message
+      });
+
+      const sendBtn = document.getElementById('sendBtn');
+      const originalText = sendBtn.textContent;
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Sending...';
+
+      try {
+        // SECURITY: Verify token before allowing message send
+        let verifyQuery;
+        if (submissionType === 'candidate') {
+          verifyQuery = client.from('candidates').select('id')
+            .eq('id', submissionId)
+            .eq('tracking_token', submissionToken)
+            .single();
+        } else {
+          verifyQuery = client.from('employers').select('id')
+            .eq('id', submissionId)
+            .eq('tracking_token', submissionToken)
+            .single();
+        }
+
+        const { data: verifyData, error: verifyError } = await verifyQuery;
+
+        console.log('Verification result:', { verifyData, verifyError });
+
+        if (verifyError || !verifyData) {
+          console.error('Verification failed:', verifyError);
+          alert("Security error: Invalid session. Please login again.");
+          window.location.href = "status.html";
+          return;
+        }
+
+        // Now insert the message
+        const { data: insertData, error } = await client.from('chat_messages').insert({
+          submission_type: submissionType,
+          submission_id: submissionId,
+          sender_type: 'user',
+          message: message
+        }).select();
+
+        console.log('Insert result:', { insertData, error });
+
+        if (error) throw error;
+
+        input.value = '';
+        await loadChatMessages();
+      } catch (err) {
+        console.error("Error sending message:", err);
+        alert(`Could not send message: ${err.message || 'Unknown error'}`);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = originalText;
+      }
+    }
+
+    // Allow Enter to send (Shift+Enter for new line)
+    document.getElementById('chatInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    function getStatusClass(status) {
+      const map = {
+        'new': 'badge-new',
+        'contacted': 'badge-contacted',
+        'hired': 'badge-hired',
+        'rejected': 'badge-rejected',
+        'closed': 'badge-closed'
+      };
+      return map[status] || 'badge-new';
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      return d.toLocaleDateString('en-US', options);
+    }
+
+    function formatTime(dateStr) {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now - d;
+      const diffMins = Math.floor(diffMs / 60000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+
+      const options = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      return d.toLocaleDateString('en-US', options);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Initialize
+    initDashboard();
+  </script>
+</body>
+</html>

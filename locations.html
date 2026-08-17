@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locations — Go Hire Consultancy</title>
+  <meta name="description" content="Check which cities and locations Go Hire Consultancy supplies skilled workers in. Search your area for availability." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=5" />
+</head>
+<body>
+  <div id="header-slot"></div>
+
+  <section class="page-hero with-photo" style="--hero-img:url('/images/hero.jpg')">
+    <div class="container">
+      <h1 data-i18n="loc.title"></h1>
+      <p data-i18n="loc.sub"></p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="loc-search">
+        <span class="si">🔍</span>
+        <input type="text" id="locInput" data-i18n-ph="loc.search" oninput="renderLocations(this.value)" />
+      </div>
+      <div class="loc-grid" id="locGrid"></div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="container">
+      <div class="contact-band with-photo reveal" style="--cta-img:url('/images/cta.jpg')">
+        <h2 data-i18n="contact.title"></h2>
+        <p data-i18n="contact.sub"></p>
+        <div class="contact-actions">
+          <a class="btn btn-white btn-lg" data-call href="#">📞 <span data-phone-text></span></a>
+          <a class="btn btn-whatsapp btn-lg" data-whatsapp href="#">💬 <span data-i18n="contact.whatsapp"></span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-slot"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js?v=3"></script>
+  <script src="js/i18n.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
+  <script>
+    function renderLocations(q = "") {
+      const query = q.trim().toLowerCase();
+      const list = DEMO_LOCATIONS.filter(l => l.toLowerCase().includes(query));
+      const grid = document.getElementById("locGrid");
+      if (!list.length) {
+        grid.innerHTML = `<div class="loc-empty" data-i18n="loc.empty"></div>`;
+      } else {
+        grid.innerHTML = list.map(l => `
+          <div class="loc-card">
+            <span class="pin">📍</span>
+            <div><h4>${l}</h4><small data-i18n="loc.available"></small></div>
+          </div>`).join("");
+      }
+      applyLang(getLang());
+    }
+    initShell("locations.html");
+    renderLocations();
+    loadLiveData(() => renderLocations(document.getElementById("locInput").value));
+  </script>
+</body>
+</html>
