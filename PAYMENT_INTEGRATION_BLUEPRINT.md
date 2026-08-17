@@ -152,11 +152,11 @@ Frontend (js/config.js):
 └─ Uses for payment UI only
 
 Vercel Environment Variables:
-├─ RAZORPAY_KEY_ID (public)
-└─ RAZORPAY_KEY_SECRET (private) ⚠️ Server-only
+└─ RAZORPAY_KEY_ID (public) — ONLY the Key ID here. NEVER the secret.
 
-Supabase Edge Function:
-└─ Uses KEY_SECRET for signature verification
+Supabase Edge Function secrets (server-only):
+├─ RAZORPAY_KEY_ID
+└─ RAZORPAY_KEY_SECRET  ⚠️ The secret lives ONLY here — never in Vercel/frontend/git
 ```
 
 ---
@@ -591,10 +591,14 @@ function showStep(stepNum) {
    - Key Secret: xxxxxxxxxxxxxxxxx
    ```
 
-3. **Add to Vercel Environment Variables:**
+3. **Set the keys in the right place:**
    ```
-   RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxx
-   RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxx (secret - server only)
+   Vercel Environment Variables (frontend):
+   RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxxx        # Key ID only — publishable
+
+   Supabase Edge Function secrets (server-only):
+   RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxxx
+   RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxx         # secret — NEVER in Vercel/frontend/git
    ```
 
 4. **Add Razorpay Script to HTML:**
@@ -732,7 +736,8 @@ async function loadPayments() {
    - `user-dashboard.html` (add payment history)
 
 5. **Environment:**
-   - Vercel: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`
+   - Vercel: `RAZORPAY_KEY_ID` only (publishable)
+   - Supabase Edge Function secrets: `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` (secret never leaves the server)
 
 ---
 
