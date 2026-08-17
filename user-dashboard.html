@@ -773,6 +773,31 @@
               <div class="detail-value">${formatDateTime(data.created_at)}</div>
             </div>
           </div>
+          ${data.payment_status === 'success' ? `
+          <div class="detail-card">
+            <h2>💰 Payment Details</h2>
+            <div class="detail-row">
+              <div class="detail-label">Payment Status</div>
+              <div class="detail-value"><span class="badge badge-hired">Paid ✓</span></div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Amount Paid</div>
+              <div class="detail-value" style="font-size:22px; font-weight:800; color:var(--green);">₹${((data.payment_amount || 0) / 100).toFixed(2)}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Payment Method</div>
+              <div class="detail-value">Online via Razorpay</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Payment ID</div>
+              <div class="detail-value" style="font-family:monospace; font-size:13px;">${data.payment_id || 'N/A'}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Paid On</div>
+              <div class="detail-value">${data.payment_date ? formatDateTime(data.payment_date) : 'N/A'}</div>
+            </div>
+          </div>
+          ` : ''}
         `;
       } else {
         detailsHTML = `

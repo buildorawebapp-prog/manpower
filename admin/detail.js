@@ -62,6 +62,11 @@ async function loadSubmissionDetails() {
     submissionData = data;
     displaySubmissionDetails(data);
 
+    // Load payment information for candidates
+    if (submissionType === 'candidate' && data.payment_status === 'success') {
+      await loadPaymentInformation(submissionId);
+    }
+
     // Hide loading, show content
     document.getElementById('loadingState').classList.add('hide');
     document.getElementById('contentArea').classList.remove('hide');
@@ -120,6 +125,73 @@ function displaySubmissionDetails(data) {
     } else {
       document.getElementById('detailMessageSection').classList.add('hide');
     }
+  }
+}
+
+/* ---- Load Payment Information (candidates only) ---- */
+async function loadPaymentInformation(candidateId) {
+  const d = submissionData;
+
+  // Reveal the payment section
+  const section = document.getElementById('paymentSection');
+  if (!section) return;
+  section.classList.remove('hide');
+
+  // --- Populate from candidate record (always available once paid) ---
+  // Status badge
+  document.getElementById('paymentStatusBadge').innerHTML =
+    '<span class="badge badge-hired">Paid ✓</span>';
+
+  // Amount (stored in paise → rupees)
+  const amountPaise = Number(d.payment_amount) || 0;
+  document.getElementById('paymentAmount').textContent =
+    '₹' + (amountPaise / 100).toFixed(2);
+
+  // Payment ID
+  document.getElementById('paymentId').textContent = d.payment_id || 'N/A';
+
+  // Payment date
+  document.getElementById('paymentDate').textContent =
+    d.payment_date ? formatDateTime(d.payment_date) : 'N/A';
+
+  // Defaults for fields that come from the payments table
+  document.getElementById('paymentOrderId').textContent = '—';
+  document.getElementById('paymentVerifiedAt').textContent = '—';
+
+  // --- Enrich with details from the payments table via RPC ---
+  try {
+    const { data, error } = await client.rpc('get_candidate_payment_info', {
+      p_candidate_id: candidateId
+    });
+
+    if (!error && data && data.length > 0) {
+      const p = data[0];
+
+      // Order ID
+      document.getElementById('paymentOrderId').textContent =
+        p.razorpay_order_id || 'N/A';
+
+      // Verified timestamp
+      document.getElementById('paymentVerifiedAt').textContent =
+        p.verified_at ? formatDateTime(p.verified_at) : 'N/A';
+
+      // Prefer authoritative payments-table values where present
+      if (p.payment_id) {
+        document.getElementById('paymentId').textContent = p.payment_id;
+      }
+      if (p.amount != null) {
+        const amt = Number(p.amount);
+        const label = (p.currency ? p.currency + ' ' : '₹') +
+          (amt / 100).toFixed(2);
+        document.getElementById('paymentAmount').textContent =
+          (p.currency && p.currency !== 'INR')
+            ? label
+            : '₹' + (amt / 100).toFixed(2);
+      }
+    }
+  } catch (err) {
+    // Non-fatal: candidate-level payment fields are already shown
+    console.warn('Could not load extended payment info:', err);
   }
 }
 

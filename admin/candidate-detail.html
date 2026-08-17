@@ -105,6 +105,45 @@
                   <div class="detail-value" id="detailDate"></div>
                 </div>
 
+                <!-- PAYMENT INFORMATION SECTION -->
+                <div id="paymentSection" class="hide" style="margin-top:32px; padding-top:24px; border-top:2px solid var(--line);">
+                  <h4 style="margin:0 0 20px 0; color:var(--navy-900); display:flex; align-items:center; gap:8px;">
+                    💰 Payment Information
+                  </h4>
+
+                  <div class="detail-section">
+                    <div class="detail-label">Payment Status</div>
+                    <div class="detail-value">
+                      <span id="paymentStatusBadge"></span>
+                    </div>
+                  </div>
+
+                  <div class="detail-section">
+                    <div class="detail-label">Amount Paid</div>
+                    <div class="detail-value" style="font-size:20px; font-weight:800; color:var(--green);" id="paymentAmount"></div>
+                  </div>
+
+                  <div class="detail-section">
+                    <div class="detail-label">Payment ID</div>
+                    <div class="detail-value" style="font-family:monospace; font-size:13px;" id="paymentId"></div>
+                  </div>
+
+                  <div class="detail-section">
+                    <div class="detail-label">Order ID</div>
+                    <div class="detail-value" style="font-family:monospace; font-size:12px; color:#666;" id="paymentOrderId"></div>
+                  </div>
+
+                  <div class="detail-section">
+                    <div class="detail-label">Payment Date</div>
+                    <div class="detail-value" id="paymentDate"></div>
+                  </div>
+
+                  <div class="detail-section">
+                    <div class="detail-label">Verified At</div>
+                    <div class="detail-value" style="color:#666;" id="paymentVerifiedAt"></div>
+                  </div>
+                </div>
+
                 <div class="detail-section">
                   <div class="detail-label">Change Status</div>
                   <div class="detail-value">
@@ -153,7 +192,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../js/supabase.js?v=3"></script>
-  <script src="detail.js?v=1"></script>
+  <script src="detail.js?v=2"></script>
   <script>
     const SUBMISSION_TYPE = 'candidate';
     initDetailPage(SUBMISSION_TYPE);
