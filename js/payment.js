@@ -99,6 +99,16 @@ async function uploadResume() {
   progress.classList.remove('hide');
 
   try {
+    // Simulate progress
+    let progressValue = 0;
+    const progressInterval = setInterval(() => {
+      progressValue += 10;
+      if (progressValue <= 90) {
+        progressBar.style.width = progressValue + '%';
+        progressText.textContent = progressValue + '%';
+      }
+    }, 150);
+
     // Generate unique filename
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
@@ -113,7 +123,12 @@ async function uploadResume() {
         upsert: false,
       });
 
+    clearInterval(progressInterval);
+
     if (error) {
+      if (error.message.includes('bucket') || error.message.includes('not found')) {
+        throw new Error('Storage not configured. Please contact administrator.');
+      }
       throw new Error(error.message);
     }
 
@@ -126,7 +141,7 @@ async function uploadResume() {
     candidateData.resume_url = resumeUrl;
 
     // Success
-    progressBar.value = 100;
+    progressBar.style.width = '100%';
     progressText.textContent = '100%';
     uploadBtn.textContent = '✓ Uploaded Successfully';
 
@@ -147,14 +162,17 @@ async function uploadResume() {
 
 // File input change handler (show file name)
 function handleFileSelect(input) {
+  const fileInfo = document.getElementById('fileInfo');
   const fileName = document.getElementById('fileName');
   const uploadBtn = document.getElementById('uploadBtn');
 
   if (input.files && input.files[0]) {
     fileName.textContent = input.files[0].name;
+    fileInfo.classList.add('show');
     uploadBtn.disabled = false;
   } else {
-    fileName.textContent = 'No file chosen';
+    fileName.textContent = '';
+    fileInfo.classList.remove('show');
     uploadBtn.disabled = true;
   }
 }
@@ -210,8 +228,18 @@ async function proceedToPayment() {
   payBtn.textContent = 'Creating order...';
 
   try {
+    // Check if Razorpay is loaded
+    if (typeof Razorpay === 'undefined') {
+      throw new Error('Razorpay SDK not loaded. Please refresh and try again.');
+    }
+
     // Step 1: Create payment order (server-side, fixed ₹200)
     const client = initSupabase();
+
+    if (!client) {
+      throw new Error('Database connection not initialized. Please refresh the page.');
+    }
+
     const { data, error } = await client.rpc('create_payment_order', {
       p_candidate_data: candidateData
     });
@@ -351,6 +379,13 @@ function displaySuccess(data) {
    Initialization
 ---------------------------------------------------------------------- */
 function initPaymentForm() {
+  // Check if required libraries are loaded
+  if (typeof initSupabase !== 'function') {
+    console.error('Supabase not loaded. Retrying...');
+    setTimeout(initPaymentForm, 500);
+    return;
+  }
+
   // Show step 1 by default
   showStep(1);
 
@@ -367,9 +402,17 @@ function initPaymentForm() {
       handleFileSelect(this);
     });
   }
+
+  console.log('Payment form initialized successfully');
 }
 
-// Auto-initialize on page load (if payment form exists)
+// Auto-initialize with delay to ensure CDN scripts are loaded
 if (document.getElementById('candidateForm')) {
-  document.addEventListener('DOMContentLoaded', initPaymentForm);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(initPaymentForm, 200);
+    });
+  } else {
+    setTimeout(initPaymentForm, 200);
+  }
 }
