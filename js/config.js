@@ -22,7 +22,7 @@ const CONFIG = {
   // For LIVE mode: set RAZORPAY_KEY_ID (rzp_live_xxx) as a Vercel Environment
   // Variable. The Razorpay KEY SECRET must NEVER live here — it belongs only in
   // the Supabase Edge Function secrets. See RAZORPAY_GO_LIVE.md.
-  razorpayKeyId: window.ENV?.RAZORPAY_KEY_ID || 'rzp_test_TQnucWOp8cFQo0',
+  razorpayKeyId: window.ENV?.RAZORPAY_KEY_ID || 'rzp_live_TQvmCRximaExDj',
 };
 
 // Note: Supabase ANON key is safe to expose in browser code.
