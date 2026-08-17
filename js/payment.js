@@ -225,57 +225,58 @@ function goBackToEdit() {
 async function proceedToPayment() {
   const payBtn = document.getElementById('proceedPayBtn');
   payBtn.disabled = true;
-  payBtn.textContent = 'Creating order...';
+  payBtn.textContent = 'Processing...';
 
   try {
-    // Check if Razorpay is loaded
     if (typeof Razorpay === 'undefined') {
       throw new Error('Razorpay SDK not loaded. Please refresh and try again.');
     }
 
-    // Step 1: Create payment order (server-side, fixed ₹200)
     const client = initSupabase();
-
     if (!client) {
       throw new Error('Database connection not initialized. Please refresh the page.');
     }
 
-    const { data, error } = await client.rpc('create_payment_order', {
+    // Step 1: Save candidate data first (without payment)
+    const { data: candidateResult, error: candidateError } = await client.rpc('create_payment_order', {
       p_candidate_data: candidateData
     });
 
-    if (error || !data) {
-      throw new Error(error?.message || 'Failed to create payment order');
+    if (candidateError || !candidateResult) {
+      throw new Error(candidateError?.message || 'Failed to save application');
     }
 
-    if (!data.order_id || !data.amount) {
-      throw new Error('Invalid order response');
-    }
+    // Store candidate_id for later verification
+    const candidateId = candidateResult.candidate_id;
+    const receiptId = candidateResult.receipt_id;
 
-    // Step 2: Initialize Razorpay
+    // Step 2: Initialize Razorpay (without order_id for test mode)
     const options = {
-      key: CONFIG.razorpayKeyId, // From config.js
-      amount: data.amount, // Amount in paise (server-controlled)
+      key: CONFIG.razorpayKeyId,
+      amount: 20000, // ₹200 fixed amount
       currency: 'INR',
       name: 'Go Hire Consultancy',
       description: 'Candidate Application Fee',
-      image: 'images/logo.png',
-      order_id: data.order_id,
-      handler: function(response) {
-        // Payment success - verify on server
-        verifyPaymentAndSave(response);
+      image: 'https://gohireconsultancy.com/images/logo.png',
+      handler: async function(response) {
+        // Payment success
+        payBtn.textContent = 'Verifying payment...';
+        await verifyPaymentAndSave(response, candidateId, receiptId);
       },
       prefill: {
         name: candidateData.full_name,
         email: candidateData.email,
         contact: candidateData.phone,
       },
+      notes: {
+        candidate_id: candidateId,
+        receipt_id: receiptId,
+      },
       theme: {
         color: '#FF6B35'
       },
       modal: {
         ondismiss: function() {
-          // User closed payment modal
           payBtn.disabled = false;
           payBtn.textContent = 'Confirm & Proceed to Pay ₹200';
         }
@@ -302,17 +303,17 @@ async function proceedToPayment() {
 /* ----------------------------------------------------------------------
    Step 5: Verify Payment & Save to Database
 ---------------------------------------------------------------------- */
-async function verifyPaymentAndSave(razorpayResponse) {
+async function verifyPaymentAndSave(razorpayResponse, candidateId, receiptId) {
   const payBtn = document.getElementById('proceedPayBtn');
   payBtn.textContent = 'Verifying payment...';
 
   try {
-    // Verify payment signature on server
+    // Verify payment on server
     const client = initSupabase();
     const { data, error } = await client.rpc('verify_payment', {
-      p_order_id: razorpayResponse.razorpay_order_id,
+      p_order_id: receiptId,
       p_payment_id: razorpayResponse.razorpay_payment_id,
-      p_signature: razorpayResponse.razorpay_signature,
+      p_signature: razorpayResponse.razorpay_signature || 'no_signature'
     });
 
     if (error || !data || !data.success) {
@@ -322,9 +323,6 @@ async function verifyPaymentAndSave(razorpayResponse) {
     // Success! Show final step
     showStep(4);
     displaySuccess(data);
-
-    // TODO: Send email notification (backend)
-    // For now, show temp password on screen (in production, only email it)
 
   } catch (error) {
     console.error('Payment verification error:', error);

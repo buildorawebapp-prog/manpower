@@ -59,10 +59,10 @@ SECURITY DEFINER
 AS $$
 DECLARE
   v_candidate_id UUID;
-  v_order_id TEXT;
-  v_amount INTEGER := 20000; -- Fixed ₹200 (in paise) - CANNOT BE CHANGED BY CLIENT
+  v_receipt_id TEXT;
+  v_amount INTEGER := 20000; -- Fixed ₹200 (in paise)
 BEGIN
-  -- Step 1: Create candidate record with pending status
+  -- Step 1: Create candidate record (pending status)
   INSERT INTO candidates (
     full_name,
     phone,
@@ -89,8 +89,8 @@ BEGIN
   )
   RETURNING id INTO v_candidate_id;
 
-  -- Step 2: Generate unique Razorpay order_id
-  v_order_id := 'order_' || REPLACE(v_candidate_id::TEXT, '-', '');
+  -- Step 2: Generate unique receipt ID (for tracking only)
+  v_receipt_id := 'rcpt_' || REPLACE(v_candidate_id::TEXT, '-', '');
 
   -- Step 3: Create payment record
   INSERT INTO payments (
@@ -103,16 +103,16 @@ BEGIN
   )
   VALUES (
     v_candidate_id,
-    v_order_id,
+    v_receipt_id,
     v_amount,
     'INR',
     'created',
     NOW()
   );
 
-  -- Step 4: Return order details for Razorpay
+  -- Step 4: Return data for client-side Razorpay initialization
   RETURN jsonb_build_object(
-    'order_id', v_order_id,
+    'receipt_id', v_receipt_id,
     'amount', v_amount,
     'candidate_id', v_candidate_id,
     'currency', 'INR'
