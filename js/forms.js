@@ -79,7 +79,11 @@ function initForm(formId, successId) {
     saveSubmission(formId, data).then((res) => {
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalTxt; }
       if (!res.ok) {
-        alert(t("err.submit") || "Could not submit. Please try again or contact us on WhatsApp.");
+        if (res.roleConflict) {
+          showRoleConflict(form, res.conflictRole);
+        } else {
+          alert(t("err.submit") || "Could not submit. Please try again or contact us on WhatsApp.");
+        }
         return;
       }
 
@@ -106,6 +110,39 @@ function generateToken() {
   return token;
 }
 
+// Detect the database "one role per email" guard inside any Supabase error
+// shape and return which role currently owns the email ('candidate' |
+// 'employer'), or null if this isn't a role-conflict error.
+function roleConflictFromError(err) {
+  let s = "";
+  try { s = JSON.stringify(err || {}); } catch (e) { s = ""; }
+  s += " " + String((err && err.message) || err || "");
+  if (s.indexOf("ROLE_CONFLICT_CANDIDATE") !== -1) return "candidate";
+  if (s.indexOf("ROLE_CONFLICT_EMPLOYER") !== -1) return "employer";
+  return null;
+}
+
+// Show the one-role-per-email error inline on the email field.
+// conflictRole = the role that already owns this email.
+function showRoleConflict(form, conflictRole) {
+  const emailInput = form.querySelector('input[name="email"], input[type="email"], #email');
+  const field = emailInput ? emailInput.closest(".field") : null;
+  const msg = conflictRole === "candidate"
+    ? "This email is already registered as a candidate. Please use a different email for an employer request."
+    : conflictRole === "employer"
+      ? "This email is already registered as an employer. Please use a different email to apply as a candidate."
+      : "This email is already registered under a different account type. Please use a different email.";
+  if (field) {
+    field.classList.add("error");
+    const em = field.querySelector(".err-msg");
+    if (em) em.textContent = msg;
+    field.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (emailInput) { try { emailInput.focus(); } catch (e) {} }
+  } else {
+    alert(msg);
+  }
+}
+
 // Save to Supabase with user account creation
 async function saveSubmission(formId, data) {
   const client = (typeof initSupabase === "function") ? initSupabase() : null;
@@ -114,6 +151,26 @@ async function saveSubmission(formId, data) {
     return { ok: true, token: "DEMO1234", email: data.email };
   }
   try {
+    // Step 0: One-role-per-email guard. An email that already belongs to the
+    // OTHER department must not be reused here. The database triggers enforce
+    // this no matter what — this pre-check just shows a friendly message first
+    // (and, for candidates, avoids taking payment before the block).
+    const { data: existingRole, error: roleErr } = await client.rpc('get_email_role', {
+      p_email: data.email
+    });
+    if (!roleErr) {
+      const conflict =
+        (formId === "hireForm"  && (existingRole === "candidate" || existingRole === "both")) ||
+        (formId === "applyForm" && (existingRole === "employer"  || existingRole === "both"));
+      if (conflict) {
+        return {
+          ok: false,
+          roleConflict: true,
+          conflictRole: formId === "hireForm" ? "candidate" : "employer"
+        };
+      }
+    }
+
     const token = generateToken();
 
     // Step 1: Get or create user account
@@ -174,6 +231,12 @@ async function saveSubmission(formId, data) {
     };
   } catch (err) {
     console.error("Submit failed:", err);
+    // Backstop: if the database trigger blocked a cross-role email, surface it
+    // as a friendly role-conflict instead of a generic failure.
+    const conflictRole = roleConflictFromError(err);
+    if (conflictRole) {
+      return { ok: false, roleConflict: true, conflictRole: conflictRole };
+    }
     return { ok: false, error: err };
   }
 }

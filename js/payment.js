@@ -60,6 +60,27 @@ async function submitBasicForm(event) {
     return;
   }
 
+  // One-role-per-email guard: an email already registered as an EMPLOYER must
+  // NOT be used to apply as a candidate. Check now — BEFORE resume upload and
+  // payment — so the user never pays only to be blocked later. The database
+  // trigger is the real, unbypassable guard; this is just a friendly heads-up.
+  try {
+    const client = (typeof initSupabase === 'function') ? initSupabase() : null;
+    if (client) {
+      const { data: existingRole, error: roleErr } = await client.rpc('get_email_role', {
+        p_email: candidateData.email
+      });
+      if (!roleErr && (existingRole === 'employer' || existingRole === 'both')) {
+        alert('This email is already registered as an employer account. Please use a different email to apply as a candidate.');
+        return;
+      }
+    }
+  } catch (e) {
+    // Non-blocking: if the pre-check fails, let the flow continue and rely on
+    // the database trigger (verified again in proceedToPayment).
+    console.warn('Role pre-check skipped:', e);
+  }
+
   // Move to step 2 (resume upload)
   showStep(2);
 }
@@ -243,6 +264,15 @@ async function proceedToPayment() {
     });
 
     if (candidateError || !candidateResult) {
+      // Backstop: the database trigger blocks an employer email applying as a
+      // candidate. Surface it as a friendly message instead of a generic error.
+      const emsg = (candidateError && candidateError.message) ? candidateError.message : '';
+      if (emsg.indexOf('ROLE_CONFLICT') !== -1) {
+        alert('This email is already registered as an employer account. Please use a different email to apply as a candidate.');
+        payBtn.disabled = false;
+        payBtn.textContent = 'Confirm & Proceed to Pay ₹200';
+        return;
+      }
       throw new Error(candidateError?.message || 'Failed to save application');
     }
 
