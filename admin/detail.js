@@ -283,11 +283,16 @@ function displayChatMessages(messages) {
     const avatarText = msg.sender_type === 'user' ? 'U' : 'A';
     const senderLabel = msg.sender_type === 'user' ? 'User' : 'Admin';
 
+    const textHtml = (msg.message && msg.message.trim())
+      ? `<div class="admin-chat-text">${escapeHtml(msg.message)}</div>` : '';
+    const attachHtml = (typeof renderChatAttachment === 'function') ? renderChatAttachment(msg) : '';
+
     div.innerHTML = `
       <div class="admin-chat-avatar">${avatarText}</div>
       <div class="admin-chat-bubble">
         <div class="admin-chat-sender">${senderLabel}</div>
-        <div class="admin-chat-text">${escapeHtml(msg.message)}</div>
+        ${textHtml}
+        ${attachHtml}
         <div class="admin-chat-time">${formatTime(msg.created_at)}</div>
       </div>
     `;
@@ -310,36 +315,95 @@ function updateUnreadBadge(count) {
   }
 }
 
+/* ---- Chat attachment state ---- */
+let adminChatSelectedFile = null;
+
 /* ---- Send Message ---- */
 async function sendMessage() {
   const input = document.getElementById('chatInput');
   const message = input.value.trim();
 
-  if (!message) return;
+  if (!message && !adminChatSelectedFile) return;
 
   const sendBtn = document.getElementById('sendBtn');
   sendBtn.disabled = true;
-  sendBtn.textContent = 'Sending...';
+  sendBtn.textContent = '⏳';
 
   try {
+    let attachment = null;
+    if (adminChatSelectedFile) {
+      attachment = await uploadChatAttachment(adminChatSelectedFile);
+    }
+
     const { error } = await client.from('chat_messages').insert({
       submission_type: submissionType,
       submission_id: submissionId,
       sender_type: 'admin',
-      message: message
+      message: message || null,
+      attachment_url: attachment ? attachment.url : null,
+      attachment_type: attachment ? attachment.type : null,
+      attachment_name: attachment ? attachment.name : null
     });
 
     if (error) throw error;
 
     input.value = '';
+    autoGrowAdminChat(input);
+    clearAdminChatAttachment();
     await loadChatMessages();
   } catch (err) {
     console.error("Error sending message:", err);
-    alert("Could not send message. Please try again.");
+    alert(err.message || "Could not send message. Please try again.");
   } finally {
     sendBtn.disabled = false;
-    sendBtn.textContent = 'Send Reply';
+    sendBtn.textContent = '➤';
   }
+}
+
+/* ---- Admin chat attachment helpers ---- */
+function handleChatFileSelect(inputEl) {
+  const file = inputEl.files && inputEl.files[0];
+  if (!file) { clearAdminChatAttachment(); return; }
+
+  const check = (typeof validateChatFile === 'function')
+    ? validateChatFile(file) : { ok: true, type: 'file' };
+  if (!check.ok) {
+    alert(check.error);
+    clearAdminChatAttachment();
+    return;
+  }
+  adminChatSelectedFile = file;
+  showAdminAttachPreview(file, check.type);
+}
+
+function showAdminAttachPreview(file, type) {
+  const preview = document.getElementById('attachPreview');
+  if (!preview) return;
+  let thumb = '<span style="font-size:22px;">📄</span>';
+  if (type === 'image') {
+    const objUrl = URL.createObjectURL(file);
+    thumb = `<img src="${objUrl}" class="ap-thumb" alt="preview" />`;
+  }
+  preview.innerHTML = `
+    ${thumb}
+    <span class="ap-name">${escapeHtml(file.name)}</span>
+    <button type="button" class="ap-remove" onclick="clearAdminChatAttachment()" title="Remove" aria-label="Remove attachment">✕</button>
+  `;
+  preview.classList.remove('hide');
+}
+
+function clearAdminChatAttachment() {
+  adminChatSelectedFile = null;
+  const preview = document.getElementById('attachPreview');
+  if (preview) { preview.innerHTML = ''; preview.classList.add('hide'); }
+  const fileInput = document.getElementById('chatFileInput');
+  if (fileInput) fileInput.value = '';
+}
+
+function autoGrowAdminChat(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
 }
 
 // Allow Enter to send (Shift+Enter for new line)

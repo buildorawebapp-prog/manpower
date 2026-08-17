@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=9" />
+  <link rel="stylesheet" href="css/style.css?v=10" />
   <style>
     /* Dark theme styles */
     body.dark-theme {
@@ -65,6 +65,24 @@
       background: #1e2636;
       border-color: #252d3e;
       color: #e8eaed;
+    }
+    body.dark-theme .chat-attach-btn {
+      background: #1e2636;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-attach-btn:hover {
+      background: #252d3e;
+      border-color: var(--saffron);
+    }
+    body.dark-theme .chat-attachment-file {
+      background: #1e2636;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-file-name {
+      color: #e8eaed;
+    }
+    body.dark-theme .chat-attachment-img {
+      border-color: #252d3e;
     }
     body.dark-theme .chat-message.user .chat-bubble {
       background: #1e2636;
@@ -610,12 +628,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js?v=3"></script>
+  <script src="js/chat-attachments.js?v=1"></script>
   <script src="js/app.js?v=3"></script>
   <script>
     let currentUserId = null;
     let currentUserEmail = null;
     let submissions = [];
     let selectedSubmission = null;
+    let chatSelectedFile = null;
 
     // Check login on load
     window.addEventListener('DOMContentLoaded', async () => {
@@ -684,7 +704,7 @@
                           sub.status === 'contacted' ? '⏳' :
                           sub.status === 'rejected' ? '❌' : '📋';
         return `
-        <div class="submission-item ${idx === 0 ? 'active' : ''}" onclick="selectSubmission('${sub.submission_id}')">
+        <div class="submission-item ${idx === 0 ? 'active' : ''}" data-id="${sub.submission_id}" onclick="selectSubmission('${sub.submission_id}', this)">
           <div class="submission-title">${statusIcon} ${sub.trade} - ${sub.location}</div>
           <div class="submission-meta">
             <span class="badge badge-${sub.status}">${sub.status}</span>
@@ -699,7 +719,7 @@
       }
     }
 
-    async function selectSubmission(id) {
+    async function selectSubmission(id, el) {
       selectedSubmission = submissions.find(s => s.submission_id === id);
       if (!selectedSubmission) return;
 
@@ -707,7 +727,12 @@
       document.querySelectorAll('.submission-item').forEach(item => {
         item.classList.remove('active');
       });
-      event.target.closest('.submission-item').classList.add('active');
+      // Use the clicked element when available; otherwise find it by id
+      // (auto-select on load calls this without a click event).
+      const activeItem = (el && el.closest)
+        ? el.closest('.submission-item')
+        : document.querySelector(`.submission-item[data-id="${id}"]`);
+      if (activeItem) activeItem.classList.add('active');
 
       await loadSubmissionDetails(selectedSubmission);
     }
@@ -852,15 +877,17 @@
             <div class="chat-empty">Loading messages...</div>
           </div>
           <div class="chat-input-area">
-            <textarea id="chatInput" class="chat-input" rows="3" placeholder="Type your message here..."></textarea>
-            <div class="chat-input-buttons">
-              <button id="sendBtn" class="btn btn-primary" onclick="sendMessage()">
-                <span>Send Message</span>
-              </button>
+            <div id="attachPreview" class="attach-preview hide"></div>
+            <div class="chat-input-row">
+              <input type="file" id="chatFileInput" accept="image/*,application/pdf" style="display:none" onchange="handleChatFileSelect(this)" />
+              <button type="button" class="chat-attach-btn" onclick="document.getElementById('chatFileInput').click()" title="Attach image or PDF" aria-label="Attach file">📎</button>
+              <textarea id="chatInput" class="chat-input" rows="1" placeholder="Type a message..." oninput="autoGrowChat(this)"></textarea>
+              <button id="sendBtn" class="chat-send-btn" onclick="sendMessage()" title="Send" aria-label="Send">➤</button>
             </div>
           </div>
         </div>
       `;
+      chatSelectedFile = null;
     }
 
     async function loadChat(type, id) {
@@ -898,15 +925,21 @@
         return;
       }
 
-      container.innerHTML = messages.map(msg => `
+      container.innerHTML = messages.map(msg => {
+        const textHtml = (msg.message && msg.message.trim())
+          ? `<div class="chat-bubble-text">${escapeHtml(msg.message)}</div>` : '';
+        const attachHtml = (typeof renderChatAttachment === 'function') ? renderChatAttachment(msg) : '';
+        return `
         <div class="chat-message ${msg.sender_type}">
           <div class="chat-avatar">${msg.sender_type === 'user' ? currentUserEmail.charAt(0).toUpperCase() : 'A'}</div>
           <div class="chat-bubble">
-            <div class="chat-bubble-text">${escapeHtml(msg.message)}</div>
+            ${textHtml}
+            ${attachHtml}
             <div class="chat-time">${formatTime(msg.created_at)}</div>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       container.scrollTop = container.scrollHeight;
     }
@@ -916,30 +949,90 @@
 
       const input = document.getElementById('chatInput');
       const message = input.value.trim();
-      if (!message) return;
+
+      // Need at least text or an attachment
+      if (!message && !chatSelectedFile) return;
 
       const client = initSupabase();
       const sendBtn = document.getElementById('sendBtn');
       sendBtn.disabled = true;
 
       try {
+        let attachment = null;
+        if (chatSelectedFile) {
+          sendBtn.textContent = '⏳';
+          attachment = await uploadChatAttachment(chatSelectedFile);
+        }
+
         const { error } = await client.from('chat_messages').insert({
           submission_type: selectedSubmission.submission_type,
           submission_id: selectedSubmission.submission_id,
           sender_type: 'user',
-          message: message
+          message: message || null,
+          attachment_url: attachment ? attachment.url : null,
+          attachment_type: attachment ? attachment.type : null,
+          attachment_name: attachment ? attachment.name : null
         });
 
         if (error) throw error;
 
         input.value = '';
+        autoGrowChat(input);
+        clearChatAttachment();
         await loadChat(selectedSubmission.submission_type, selectedSubmission.submission_id);
       } catch (err) {
         console.error('Error sending message:', err);
-        alert('Could not send message');
+        alert(err.message || 'Could not send message');
       } finally {
         sendBtn.disabled = false;
+        sendBtn.textContent = '➤';
       }
+    }
+
+    /* ---- Chat attachment helpers (user dashboard) ---- */
+    function handleChatFileSelect(input) {
+      const file = input.files && input.files[0];
+      if (!file) { clearChatAttachment(); return; }
+
+      const check = (typeof validateChatFile === 'function')
+        ? validateChatFile(file) : { ok: true, type: 'file' };
+      if (!check.ok) {
+        alert(check.error);
+        clearChatAttachment();
+        return;
+      }
+      chatSelectedFile = file;
+      showAttachPreview(file, check.type);
+    }
+
+    function showAttachPreview(file, type) {
+      const preview = document.getElementById('attachPreview');
+      if (!preview) return;
+      let thumb = '<span style="font-size:22px;">📄</span>';
+      if (type === 'image') {
+        const objUrl = URL.createObjectURL(file);
+        thumb = `<img src="${objUrl}" class="ap-thumb" alt="preview" />`;
+      }
+      preview.innerHTML = `
+        ${thumb}
+        <span class="ap-name">${escapeHtml(file.name)}</span>
+        <button type="button" class="ap-remove" onclick="clearChatAttachment()" title="Remove" aria-label="Remove attachment">✕</button>
+      `;
+      preview.classList.remove('hide');
+    }
+
+    function clearChatAttachment() {
+      chatSelectedFile = null;
+      const preview = document.getElementById('attachPreview');
+      if (preview) { preview.innerHTML = ''; preview.classList.add('hide'); }
+      const fileInput = document.getElementById('chatFileInput');
+      if (fileInput) fileInput.value = '';
+    }
+
+    function autoGrowChat(el) {
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 140) + 'px';
     }
 
     function toggleTheme() {

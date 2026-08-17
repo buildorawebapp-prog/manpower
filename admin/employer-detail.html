@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../css/style.css?v=7" />
+  <link rel="stylesheet" href="../css/style.css?v=8" />
 </head>
 <body class="admin-body">
   <div class="admin-shell">
@@ -139,13 +139,19 @@
                 </div>
 
                 <div class="admin-chat-input-area">
-                  <textarea
-                    id="chatInput"
-                    class="admin-chat-input"
-                    rows="3"
-                    placeholder="Type your message to the employer..."
-                  ></textarea>
-                  <button id="sendBtn" class="btn btn-primary" onclick="sendMessage()">Send Reply</button>
+                  <div id="attachPreview" class="attach-preview hide"></div>
+                  <div class="chat-input-row">
+                    <input type="file" id="chatFileInput" accept="image/*,application/pdf" style="display:none" onchange="handleChatFileSelect(this)" />
+                    <button type="button" class="chat-attach-btn" onclick="document.getElementById('chatFileInput').click()" title="Attach image or PDF" aria-label="Attach file">📎</button>
+                    <textarea
+                      id="chatInput"
+                      class="admin-chat-input"
+                      rows="1"
+                      placeholder="Type your reply to the employer..."
+                      oninput="autoGrowAdminChat(this)"
+                    ></textarea>
+                    <button id="sendBtn" class="chat-send-btn" onclick="sendMessage()" title="Send reply" aria-label="Send">➤</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -157,7 +163,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../js/supabase.js?v=3"></script>
-  <script src="detail.js?v=2"></script>
+  <script src="../js/chat-attachments.js?v=1"></script>
+  <script src="detail.js?v=3"></script>
   <script>
     const SUBMISSION_TYPE = 'employer';
     initDetailPage(SUBMISSION_TYPE);
