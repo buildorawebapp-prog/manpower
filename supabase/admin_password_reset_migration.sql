@@ -14,6 +14,11 @@
 -- auth). So execute rights are granted to the `authenticated` role only, and
 -- explicitly revoked from anon/public — the anon key CANNOT call this.
 --
+-- NOTE ON search_path: this function calls hash_password() which uses
+-- pgcrypto's digest(). In Supabase, pgcrypto lives in the `extensions` schema,
+-- so `extensions` MUST be in search_path or you get
+-- "function digest(text, unknown) does not exist". Do not drop it.
+--
 -- Idempotent: safe to run more than once.
 -- ==========================================================================
 
@@ -64,7 +69,7 @@ BEGIN
 
   RETURN QUERY SELECT true, v_message, v_temp;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions, pg_temp;
 
 -- Lock down execution to admins (authenticated) only.
 REVOKE ALL ON FUNCTION admin_reset_user_password(TEXT) FROM PUBLIC;
