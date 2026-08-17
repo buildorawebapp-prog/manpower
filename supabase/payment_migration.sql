@@ -195,13 +195,26 @@ BEGIN
     status = 'new'
   WHERE id = v_payment.candidate_id;
 
-  -- Step 8: Create user_password entry (hash password)
-  INSERT INTO user_passwords (user_email, password_hash)
-  VALUES (v_candidate.email, hash_password(v_temp_password))
-  ON CONFLICT (user_email) DO UPDATE
-  SET password_hash = hash_password(v_temp_password);
+  -- Step 8: Generate temporary password (6-digit)
+  v_temp_password := 'GH' || LPAD(FLOOR(RANDOM() * 10000)::TEXT, 4, '0');
 
-  -- Step 9: Return success with credentials (for email)
+  -- Step 9: Create/Update user account
+  -- Check if user_accounts table exists, otherwise use user_passwords
+  BEGIN
+    INSERT INTO user_accounts (email, password_hash, created_at)
+    VALUES (v_candidate.email, hash_password(v_temp_password), NOW())
+    ON CONFLICT (email) DO UPDATE
+    SET password_hash = hash_password(v_temp_password);
+  EXCEPTION
+    WHEN undefined_table THEN
+      -- Fallback: Try user_passwords table
+      INSERT INTO user_passwords (user_email, password_hash)
+      VALUES (v_candidate.email, hash_password(v_temp_password))
+      ON CONFLICT (user_email) DO UPDATE
+      SET password_hash = hash_password(v_temp_password);
+  END;
+
+  -- Step 10: Return success with credentials (for email)
   RETURN jsonb_build_object(
     'success', true,
     'candidate_id', v_candidate.id,
