@@ -15,7 +15,18 @@ let ADMIN_SETTINGS = { phone: "", whatsapp: "", email: "", company: "", address:
 const CAND_STATUSES = ["new", "contacted", "hired", "rejected"];
 const EMP_STATUSES = ["new", "contacted", "closed"];
 
-function badge(status) { return `<span class="badge badge-${status}">${status}</span>`; }
+function statusLabel(s) { return (s || "").replace(/_/g, " "); }
+function badge(status, id) {
+  const idAttr = id ? ` id="${id}"` : "";
+  return `<span${idAttr} class="badge badge-${status}">${statusLabel(status)}</span>`;
+}
+/* Build the <option> list for a status dropdown, keeping the current
+   value visible even if it isn't one of the standard choices
+   (e.g. "pending_payment"). */
+function statusOptions(list, current) {
+  const all = list.includes(current) || !current ? list : [current, ...list];
+  return all.map(s => `<option value="${s}" ${s === current ? "selected" : ""}>${statusLabel(s)}</option>`).join("");
+}
 function fmtDate(iso) { return iso ? iso.slice(0, 10) : ""; }
 function telHref(p) { return "tel:" + (p || "").replace(/[^0-9+]/g, ""); }
 
@@ -88,9 +99,12 @@ function renderCandidates() {
       <td>${c.experience || ""}</td>
       <td>${c.location || ""}</td>
       <td>
-        <select class="mini-btn" onchange="setCandStatus('${c.id}', this.value)">
-          ${CAND_STATUSES.map(s => `<option value="${s}" ${s===c.status?"selected":""}>${s}</option>`).join("")}
-        </select>
+        <div class="status-cell">
+          ${badge(c.status, "candBadge-" + c.id)}
+          <select class="mini-btn status-select" onchange="setCandStatus('${c.id}', this.value)">
+            ${statusOptions(CAND_STATUSES, c.status)}
+          </select>
+        </div>
       </td>
       <td>${fmtDate(c.created_at)}</td>
       <td>
@@ -110,6 +124,8 @@ function renderCandidatesMini() {
 }
 async function setCandStatus(id, val) {
   const c = CANDIDATES.find(x => x.id === id); if (c) c.status = val;
+  const b = document.getElementById("candBadge-" + id);
+  if (b) { b.className = "badge badge-" + val; b.textContent = statusLabel(val); }
   renderStats();
   await client.from("candidates").update({ status: val }).eq("id", id);
 }
@@ -125,9 +141,12 @@ function renderEmployers() {
       <td>${e.workers_count || ""}</td>
       <td>${e.location || ""}</td>
       <td>
-        <select class="mini-btn" onchange="setEmpStatus('${e.id}', this.value)">
-          ${EMP_STATUSES.map(s => `<option value="${s}" ${s===e.status?"selected":""}>${s}</option>`).join("")}
-        </select>
+        <div class="status-cell">
+          ${badge(e.status, "empBadge-" + e.id)}
+          <select class="mini-btn status-select" onchange="setEmpStatus('${e.id}', this.value)">
+            ${statusOptions(EMP_STATUSES, e.status)}
+          </select>
+        </div>
       </td>
       <td>
         <a class="mini-btn" href="employer-detail.html?id=${e.id}">View Details</a>
@@ -137,6 +156,8 @@ function renderEmployers() {
 }
 async function setEmpStatus(id, val) {
   const e = EMPLOYERS.find(x => x.id === id); if (e) e.status = val;
+  const b = document.getElementById("empBadge-" + id);
+  if (b) { b.className = "badge badge-" + val; b.textContent = statusLabel(val); }
   renderStats();
   await client.from("employers").update({ status: val }).eq("id", id);
 }

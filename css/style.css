@@ -638,6 +638,12 @@ h1, h2, h3 { line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; color
 .badge-contacted { background: var(--amber-100); color: var(--saffron-dark); }
 .badge-hired { background: #e3f7ec; color: var(--green); }
 .badge-closed { background: #eef1f7; color: var(--muted); }
+.badge-rejected { background: #fdecec; color: #e5484d; }
+.badge-pending_payment { background: #fff4e0; color: #b26a00; }
+.badge-pending { background: #fff4e0; color: #b26a00; }
+.status-cell { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.status-cell .badge { text-transform: capitalize; }
+.status-cell .status-select { padding: 5px 9px; font-size: 12px; }
 .mini-btn { padding: 6px 12px; font-size: 13px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; font-weight: 700; cursor: pointer; color: var(--navy-800); }
 .mini-btn:hover { border-color: var(--saffron); color: var(--saffron-dark); }
 
