@@ -58,7 +58,7 @@ const I18N = {
     "contact.sub": "Call us or message on WhatsApp — we usually reply within a few hours.",
     "contact.call": "Call Now", "contact.whatsapp": "WhatsApp Us",
 
-    "footer.about": "Go Hire Consultancy supplies verified skilled and semi-skilled workers to businesses across India.",
+    "footer.about": "Connecting skilled and semi-skilled workers from around the world with trusted employers and international job opportunities.",
     "footer.company": "Company", "footer.services": "Services", "footer.getstarted": "Get Started",
     "footer.rights": "All rights reserved.",
 

@@ -654,6 +654,15 @@ h1, h2, h3 { line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; color
 .mini-btn { padding: 6px 12px; font-size: 13px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; font-weight: 700; cursor: pointer; color: var(--navy-800); }
 .mini-btn:hover { border-color: var(--saffron); color: var(--saffron-dark); }
 
+/* Bulk-delete toolbar + row-selection column (admin candidate / employer lists) */
+.bulk-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.bulk-count { font-size: 13px; font-weight: 700; color: var(--muted); }
+.btn-danger { padding: 8px 15px; font-size: 13px; border-radius: 8px; border: 1.5px solid #e5484d; background: #e5484d; color: #fff; font-weight: 700; cursor: pointer; transition: background .15s ease, opacity .15s ease; }
+.btn-danger:hover:not(:disabled) { background: #cf3b40; border-color: #cf3b40; }
+.btn-danger:disabled { opacity: .45; cursor: not-allowed; }
+.table th.sel-col, .table td.sel-col { width: 40px; text-align: center; padding-left: 14px; padding-right: 8px; }
+.sel-col input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; accent-color: var(--navy-600); vertical-align: middle; margin: 0; }
+
 .admin-login { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(160deg, var(--navy-900), var(--navy-700)); padding: 20px; }
 .login-card { background: #fff; border-radius: 20px; padding: 40px; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); }
 .login-card .brand { justify-content: center; margin-bottom: 8px; }

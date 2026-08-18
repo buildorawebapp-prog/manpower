@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../css/style.css?v=9" />
+  <link rel="stylesheet" href="../css/style.css?v=10" />
 </head>
 <body class="admin-body">
   <div class="admin-shell">
@@ -59,10 +59,16 @@
       <!-- CANDIDATES -->
       <section id="view-cand" class="adm-view hide">
         <div class="panel">
-          <div class="panel-head"><h3>Candidate Applications (<span id="candCount">0</span>)</h3></div>
+          <div class="panel-head">
+            <h3>Candidate Applications (<span id="candCount">0</span>)</h3>
+            <div class="bulk-bar">
+              <span class="bulk-count"><span id="candSelCount">0</span> selected</span>
+              <button class="btn-danger" id="candDelBtn" onclick="deleteSelected('cand')" disabled>🗑 Delete selected</button>
+            </div>
+          </div>
           <div style="overflow-x:auto">
             <table class="table">
-              <thead><tr><th>Name</th><th>Phone</th><th>Trade</th><th>Experience</th><th>Location</th><th>Status</th><th>Date</th><th></th></tr></thead>
+              <thead><tr><th class="sel-col"><input type="checkbox" id="candSelectAll" onchange="toggleSelectAll('cand')" aria-label="Select all candidates"></th><th>Name</th><th>Phone</th><th>Trade</th><th>Experience</th><th>Location</th><th>Status</th><th>Date</th><th></th></tr></thead>
               <tbody id="candBody"></tbody>
             </table>
           </div>
@@ -72,10 +78,16 @@
       <!-- EMPLOYERS -->
       <section id="view-emp" class="adm-view hide">
         <div class="panel">
-          <div class="panel-head"><h3>Employer Requests (<span id="empCount">0</span>)</h3></div>
+          <div class="panel-head">
+            <h3>Employer Requests (<span id="empCount">0</span>)</h3>
+            <div class="bulk-bar">
+              <span class="bulk-count"><span id="empSelCount">0</span> selected</span>
+              <button class="btn-danger" id="empDelBtn" onclick="deleteSelected('emp')" disabled>🗑 Delete selected</button>
+            </div>
+          </div>
           <div style="overflow-x:auto">
             <table class="table">
-              <thead><tr><th>Company</th><th>Contact</th><th>Phone</th><th>Trade</th><th>Workers</th><th>Location</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th class="sel-col"><input type="checkbox" id="empSelectAll" onchange="toggleSelectAll('emp')" aria-label="Select all employers"></th><th>Company</th><th>Contact</th><th>Phone</th><th>Trade</th><th>Workers</th><th>Location</th><th>Status</th><th></th></tr></thead>
               <tbody id="empBody"></tbody>
             </table>
           </div>
@@ -156,7 +168,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../js/supabase.js?v=3"></script>
-  <script src="admin.js?v=6"></script>
+  <script src="admin.js?v=7"></script>
   <script>
     initAdmin();
   </script>

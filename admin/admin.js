@@ -29,6 +29,7 @@ function statusOptions(list, current) {
 }
 function fmtDate(iso) { return iso ? iso.slice(0, 10) : ""; }
 function telHref(p) { return "tel:" + (p || "").replace(/[^0-9+]/g, ""); }
+function escAttr(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
 /* ---- Auth guard + logout ---- */
 async function requireAuth() {
@@ -93,6 +94,7 @@ async function loadAll() {
 function renderCandidates() {
   document.getElementById("candBody").innerHTML = CANDIDATES.map(c => `
     <tr>
+      <td class="sel-col"><input type="checkbox" class="row-check" value="${c.id}" onchange="onRowCheck('cand')" aria-label="Select ${escAttr(c.full_name)}"></td>
       <td><strong>${c.full_name}</strong></td>
       <td>${c.phone}</td>
       <td>${c.trade}</td>
@@ -110,8 +112,9 @@ function renderCandidates() {
       <td>
         <a class="mini-btn" href="candidate-detail.html?id=${c.id}">View Details</a>
       </td>
-    </tr>`).join("") || emptyRow(8);
+    </tr>`).join("") || emptyRow(9);
   document.getElementById("candCount").textContent = CANDIDATES.length;
+  updateBulkBar("cand");
 }
 function renderCandidatesMini() {
   const el = document.getElementById("candBodyMini");
@@ -134,6 +137,7 @@ async function setCandStatus(id, val) {
 function renderEmployers() {
   document.getElementById("empBody").innerHTML = EMPLOYERS.map(e => `
     <tr>
+      <td class="sel-col"><input type="checkbox" class="row-check" value="${e.id}" onchange="onRowCheck('emp')" aria-label="Select ${escAttr(e.company_name)}"></td>
       <td><strong>${e.company_name}</strong></td>
       <td>${e.contact_person}</td>
       <td>${e.phone}</td>
@@ -151,8 +155,9 @@ function renderEmployers() {
       <td>
         <a class="mini-btn" href="employer-detail.html?id=${e.id}">View Details</a>
       </td>
-    </tr>`).join("") || emptyRow(8);
+    </tr>`).join("") || emptyRow(9);
   document.getElementById("empCount").textContent = EMPLOYERS.length;
+  updateBulkBar("emp");
 }
 async function setEmpStatus(id, val) {
   const e = EMPLOYERS.find(x => x.id === id); if (e) e.status = val;
@@ -163,6 +168,122 @@ async function setEmpStatus(id, val) {
 }
 
 function emptyRow(cols) { return `<tr><td colspan="${cols}" style="text-align:center;color:var(--muted);padding:26px">No records yet.</td></tr>`; }
+
+/* ==========================================================================
+   Bulk delete — select candidates / employers and permanently remove them
+   plus ALL connected data (chats, status history, payments, resume + chat
+   files, and the login account when it has no other submission left).
+   ========================================================================== */
+const BULK = {
+  cand: { body: "candBody", selectAll: "candSelectAll", count: "candSelCount", delBtn: "candDelBtn", label: "candidate" },
+  emp:  { body: "empBody",  selectAll: "empSelectAll",  count: "empSelCount",  delBtn: "empDelBtn",  label: "employer" },
+};
+
+function rowChecks(which) {
+  return Array.from(document.querySelectorAll("#" + BULK[which].body + " .row-check"));
+}
+function getSelectedIds(which) {
+  return rowChecks(which).filter(b => b.checked).map(b => b.value);
+}
+// Header "select all" toggled → match every row checkbox.
+function toggleSelectAll(which) {
+  const master = document.getElementById(BULK[which].selectAll);
+  const on = !!(master && master.checked);
+  rowChecks(which).forEach(b => { b.checked = on; });
+  updateBulkBar(which);
+}
+// A single row checkbox changed.
+function onRowCheck(which) { updateBulkBar(which); }
+// Keep the toolbar count, Delete button and header checkbox in sync.
+function updateBulkBar(which) {
+  const cfg = BULK[which];
+  const boxes = rowChecks(which);
+  const n = boxes.filter(b => b.checked).length;
+  const countEl = document.getElementById(cfg.count);
+  if (countEl) countEl.textContent = n;
+  const delBtn = document.getElementById(cfg.delBtn);
+  if (delBtn) delBtn.disabled = n === 0;
+  const master = document.getElementById(cfg.selectAll);
+  if (master) {
+    master.checked = n > 0 && n === boxes.length;
+    master.indeterminate = n > 0 && n < boxes.length;
+  }
+}
+
+// Pull the in-bucket path out of a stored Storage URL (public or signed form).
+function bucketPathFromUrl(url, bucket) {
+  if (!url) return null;
+  const markers = ["/object/public/" + bucket + "/", "/object/sign/" + bucket + "/", "/object/" + bucket + "/"];
+  for (const m of markers) {
+    const i = String(url).indexOf(m);
+    if (i !== -1) {
+      let p = String(url).slice(i + m.length);
+      const q = p.indexOf("?"); if (q !== -1) p = p.slice(0, q);
+      try { return decodeURIComponent(p); } catch (_) { return p; }
+    }
+  }
+  return null;
+}
+// Delete the physical files from a bucket. Non-fatal: DB rows are already gone,
+// a leftover file only wastes storage, so we log instead of throwing.
+async function removeStorageFiles(bucket, urls) {
+  if (!urls || !urls.length) return;
+  const paths = urls.map(u => bucketPathFromUrl(u, bucket)).filter(Boolean);
+  if (!paths.length) return;
+  const { error } = await client.storage.from(bucket).remove(paths);
+  if (error) console.warn("Could not remove some " + bucket + " files:", error.message);
+}
+
+async function deleteSelected(which) {
+  const cfg = BULK[which];
+  const ids = getSelectedIds(which);
+  if (!ids.length) return;
+
+  const noun = ids.length + " " + cfg.label + (ids.length === 1 ? "" : "s");
+  const typed = prompt(
+    "⚠️ PERMANENTLY delete " + noun + " and ALL their data?\n\n" +
+    "This removes their chats, images, videos, resume file, payment records " +
+    "and login account. It CANNOT be undone.\n\n" +
+    "Type DELETE (capitals) to confirm:"
+  );
+  if (typed === null) return;                 // Cancel pressed
+  if (typed.trim() !== "DELETE") {
+    alert("Cancelled — you did not type DELETE. Nothing was deleted.");
+    return;
+  }
+
+  const delBtn = document.getElementById(cfg.delBtn);
+  const oldText = delBtn ? delBtn.textContent : "";
+  if (delBtn) { delBtn.disabled = true; delBtn.textContent = "Deleting…"; }
+
+  try {
+    const args = which === "cand"
+      ? { p_candidate_ids: ids, p_employer_ids: [] }
+      : { p_candidate_ids: [], p_employer_ids: ids };
+    const { data, error } = await client.rpc("admin_delete_submissions", args);
+    if (error) throw error;
+
+    // Remove the physical Storage files the server reported.
+    const d = data || {};
+    await removeStorageFiles("candidate-resumes", d.resume_urls || []);
+    await removeStorageFiles("chat-attachments", d.attachment_urls || []);
+
+    // Reset header checkbox, then reload fresh data (re-renders + updateBulkBar).
+    const master = document.getElementById(cfg.selectAll);
+    if (master) { master.checked = false; master.indeterminate = false; }
+    await loadAll();
+
+    let msg = "✓ Deleted " + noun + " and all connected data.";
+    if (d.deleted_accounts) msg += "\nLogin accounts removed: " + d.deleted_accounts + ".";
+    alert(msg);
+  } catch (e) {
+    console.error("Bulk delete failed:", e);
+    alert("Delete failed: " + (e && e.message ? e.message : e));
+  } finally {
+    if (delBtn) { delBtn.textContent = oldText; }
+    updateBulkBar(which);
+  }
+}
 
 /* ---- Locations ---- */
 function renderLocationsAdmin() {
