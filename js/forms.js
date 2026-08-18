@@ -220,6 +220,7 @@ async function saveSubmission(formId, data) {
         contact_person:  data.contact_person,
         phone:           data.phone,
         email:           data.email,
+        gender:          data.gender || null,
         trade_needed:    data.trade_needed,
         workers_count:   data.workers_count ? parseInt(data.workers_count, 10) : null,
         location:        data.location,

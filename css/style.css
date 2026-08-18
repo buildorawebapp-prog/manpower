@@ -93,13 +93,8 @@ h1, h2, h3 { line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; color
   background-repeat: no-repeat;
   background-position: center;
 }
-.brand-logo::before {
-  display: none;
-}
-    var(--saffron) 87.5% 95.5%, transparent 95.5% 100%);
-  -webkit-mask: radial-gradient(circle, transparent 4px, #000 4.5px);
-  mask: radial-gradient(circle, transparent 4px, #000 4.5px);
-}
+/* Header logo — enlarged so the full branding reads clearly, still fitted inside the 72px nav */
+.nav .brand-logo { width: 60px; height: 60px; }
 .brand small { display: block; font-size: 11px; font-weight: 600; color: var(--saffron-dark); letter-spacing: .12em; text-transform: uppercase; }
 .nav-links { display: flex; align-items: center; gap: 4px; }
 .nav-links a {

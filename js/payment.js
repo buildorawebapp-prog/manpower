@@ -47,6 +47,7 @@ async function submitBasicForm(event) {
     full_name: document.getElementById('fullName').value.trim(),
     phone: fullPhone,
     email: document.getElementById('email').value.trim(),
+    gender: document.getElementById('gender').value,
     trade: document.getElementById('trade').value,
     experience: document.getElementById('experience').value,
     location: document.getElementById('location').value,
@@ -55,6 +56,12 @@ async function submitBasicForm(event) {
   // Validate
   if (!candidateData.full_name || !candidateData.phone || !candidateData.email) {
     alert('Please fill all required fields');
+    return;
+  }
+
+  // Gender is required
+  if (!candidateData.gender) {
+    alert('Please select your gender');
     return;
   }
 
@@ -227,6 +234,10 @@ function displayReview() {
     <div class="review-item">
       <span class="review-label">📧 Email:</span>
       <span class="review-value">${candidateData.email}</span>
+    </div>
+    <div class="review-item">
+      <span class="review-label">⚧ Gender:</span>
+      <span class="review-value">${candidateData.gender}</span>
     </div>
     <div class="review-item">
       <span class="review-label">🛠️ Trade:</span>

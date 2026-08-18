@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../css/style.css?v=12" />
+  <link rel="stylesheet" href="../css/style.css?v=15" />
 </head>
 <body class="admin-body">
   <div class="admin-shell">
@@ -78,6 +78,11 @@
                     <span id="detailPhone"></span>
                     <a id="detailPhoneCall" class="mini-btn" style="margin-left:12px">📞 Call</a>
                   </div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-label">Gender</div>
+                  <div class="detail-value" id="detailGender"></div>
                 </div>
 
                 <div class="detail-section">
@@ -209,7 +214,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../js/supabase.js?v=3"></script>
   <script src="../js/chat-attachments.js?v=4"></script>
-  <script src="detail.js?v=7"></script>
+  <script src="detail.js?v=8"></script>
   <script>
     const SUBMISSION_TYPE = 'candidate';
     initDetailPage(SUBMISSION_TYPE);

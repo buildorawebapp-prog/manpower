@@ -73,7 +73,7 @@ const I18N = {
     // hire page
     "hire.title": "Hire Skilled Workers", "hire.sub": "Tell us your requirement — we'll get back with available workers.",
     "f.company": "Company / Your Name", "f.contact": "Contact Person", "f.tradeNeed": "Trade Needed",
-    "f.count": "How many workers?", "f.locNeed": "Work Location / City", "f.detail": "Requirement details (optional)",
+    "f.count": "How many workers?", "f.locNeed": "Work Location / City", "f.gender": "Gender", "f.detail": "Requirement details (optional)",
     "hire.submit": "Send Request",
     "hire.okT": "Request received!", "hire.okP": "Thank you. Our team will contact you shortly to discuss your requirement.",
 
@@ -180,7 +180,7 @@ const I18N = {
 
     "hire.title": "कुशल कामगार किराए पर लें", "hire.sub": "अपनी ज़रूरत बताएं — हम उपलब्ध कामगारों के साथ जवाब देंगे।",
     "f.company": "कंपनी / आपका नाम", "f.contact": "संपर्क व्यक्ति", "f.tradeNeed": "किस ट्रेड की ज़रूरत",
-    "f.count": "कितने कामगार?", "f.locNeed": "कार्य स्थान / शहर", "f.detail": "ज़रूरत का विवरण (वैकल्पिक)",
+    "f.count": "कितने कामगार?", "f.locNeed": "कार्य स्थान / शहर", "f.gender": "लिंग", "f.detail": "ज़रूरत का विवरण (वैकल्पिक)",
     "hire.submit": "अनुरोध भेजें",
     "hire.okT": "अनुरोध प्राप्त हुआ!", "hire.okP": "धन्यवाद। हमारी टीम जल्द ही आपसे संपर्क करेगी।",
 
@@ -271,7 +271,7 @@ const I18N = {
 
     "hire.title": "দক্ষ কর্মী নিয়োগ করুন", "hire.sub": "আপনার প্রয়োজন জানান — আমরা উপলব্ধ কর্মী নিয়ে সাড়া দেব।",
     "f.company": "কোম্পানি / আপনার নাম", "f.contact": "যোগাযোগের ব্যক্তি", "f.tradeNeed": "যে ট্রেড প্রয়োজন",
-    "f.count": "কতজন কর্মী?", "f.locNeed": "কাজের স্থান / শহর", "f.detail": "প্রয়োজনের বিবরণ (ঐচ্ছিক)",
+    "f.count": "কতজন কর্মী?", "f.locNeed": "কাজের স্থান / শহর", "f.gender": "লিঙ্গ", "f.detail": "প্রয়োজনের বিবরণ (ঐচ্ছিক)",
     "hire.submit": "অনুরোধ পাঠান",
     "hire.okT": "অনুরোধ গৃহীত!", "hire.okP": "ধন্যবাদ। আমাদের দল শীঘ্রই যোগাযোগ করবে।",
 
@@ -335,7 +335,7 @@ const I18N = {
 
     "hire.title": "திறமையான தொழிலாளர்களை நியமிக்கவும்", "hire.sub": "உங்கள் தேவையை சொல்லுங்கள் — கிடைக்கும் தொழிலாளர்களுடன் பதிலளிப்போம்.",
     "f.company": "நிறுவனம் / உங்கள் பெயர்", "f.contact": "தொடர்பு நபர்", "f.tradeNeed": "தேவையான தொழில்",
-    "f.count": "எத்தனை தொழிலாளர்?", "f.locNeed": "வேலை இடம் / நகரம்", "f.detail": "தேவை விவரம் (விருப்பம்)",
+    "f.count": "எத்தனை தொழிலாளர்?", "f.locNeed": "வேலை இடம் / நகரம்", "f.gender": "பாலினம்", "f.detail": "தேவை விவரம் (விருப்பம்)",
     "hire.submit": "கோரிக்கை அனுப்பு",
     "hire.okT": "கோரிக்கை பெறப்பட்டது!", "hire.okP": "நன்றி. எங்கள் குழு விரைவில் தொடர்பு கொள்ளும்.",
 
@@ -399,7 +399,7 @@ const I18N = {
 
     "hire.title": "నైపుణ్యం గల కార్మికులను నియమించండి", "hire.sub": "మీ అవసరం చెప్పండి — అందుబాటులో ఉన్న కార్మికులతో స్పందిస్తాం.",
     "f.company": "కంపెనీ / మీ పేరు", "f.contact": "సంప్రదింపు వ్యక్తి", "f.tradeNeed": "అవసరమైన ట్రేడ్",
-    "f.count": "ఎంత మంది కార్మికులు?", "f.locNeed": "పని స్థలం / నగరం", "f.detail": "అవసర వివరాలు (ఐచ్ఛికం)",
+    "f.count": "ఎంత మంది కార్మికులు?", "f.locNeed": "పని స్థలం / నగరం", "f.gender": "లింగం", "f.detail": "అవసర వివరాలు (ఐచ్ఛికం)",
     "hire.submit": "అభ్యర్థన పంపండి",
     "hire.okT": "అభ్యర్థన అందింది!", "hire.okP": "ధన్యవాదాలు. మా బృందం త్వరలో సంప్రదిస్తుంది.",
 
@@ -463,7 +463,7 @@ const I18N = {
 
     "hire.title": "कुशल कामगार नियुक्त करा", "hire.sub": "तुमची गरज सांगा — आम्ही उपलब्ध कामगारांसह प्रतिसाद देऊ.",
     "f.company": "कंपनी / तुमचे नाव", "f.contact": "संपर्क व्यक्ती", "f.tradeNeed": "आवश्यक ट्रेड",
-    "f.count": "किती कामगार?", "f.locNeed": "कामाचे ठिकाण / शहर", "f.detail": "गरजेचा तपशील (ऐच्छिक)",
+    "f.count": "किती कामगार?", "f.locNeed": "कामाचे ठिकाण / शहर", "f.gender": "लिंग", "f.detail": "गरजेचा तपशील (ऐच्छिक)",
     "hire.submit": "विनंती पाठवा",
     "hire.okT": "विनंती मिळाली!", "hire.okP": "धन्यवाद. आमची टीम लवकरच संपर्क करेल.",
 

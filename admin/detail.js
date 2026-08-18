@@ -103,6 +103,7 @@ function displaySubmissionDetails(data) {
   if (submissionType === 'candidate') {
     // Candidate specific fields
     document.getElementById('detailName').textContent = data.full_name || 'N/A';
+    document.getElementById('detailGender').textContent = data.gender || 'N/A';
     document.getElementById('detailTrade').textContent = data.trade || 'N/A';
     document.getElementById('detailExperience').textContent = data.experience || 'N/A';
     document.getElementById('detailLocation').textContent = data.location || 'N/A';
@@ -116,6 +117,7 @@ function displaySubmissionDetails(data) {
     // Employer specific fields
     document.getElementById('detailCompany').textContent = data.company_name || 'N/A';
     document.getElementById('detailContact').textContent = data.contact_person || 'N/A';
+    document.getElementById('detailGender').textContent = data.gender || 'N/A';
     document.getElementById('detailTrade').textContent = data.trade_needed || 'N/A';
     document.getElementById('detailWorkers').textContent = data.workers_count || 'N/A';
     document.getElementById('detailLocation').textContent = data.location || 'N/A';

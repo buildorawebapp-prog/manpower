@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=12" />
+  <link rel="stylesheet" href="css/style.css?v=15" />
   <style>
     /* Dark theme styles */
     body.dark-theme {
@@ -800,6 +800,10 @@
               <div class="detail-value">${data.phone}</div>
             </div>
             <div class="detail-row">
+              <div class="detail-label">Gender</div>
+              <div class="detail-value">${data.gender || 'N/A'}</div>
+            </div>
+            <div class="detail-row">
               <div class="detail-label">Trade</div>
               <div class="detail-value">${data.trade}</div>
             </div>
@@ -865,6 +869,10 @@
             <div class="detail-row">
               <div class="detail-label">Phone</div>
               <div class="detail-value">${data.phone}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Gender</div>
+              <div class="detail-value">${data.gender || 'N/A'}</div>
             </div>
             <div class="detail-row">
               <div class="detail-label">Trade Needed</div>
