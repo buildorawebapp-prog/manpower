@@ -285,7 +285,14 @@ function displayChatMessages(messages) {
 
     const textHtml = (msg.message && msg.message.trim())
       ? `<div class="admin-chat-text">${escapeHtml(msg.message)}</div>` : '';
-    const attachHtml = (typeof renderChatAttachment === 'function') ? renderChatAttachment(msg) : '';
+
+    // For intro videos, give the admin a proper download name + a delete button.
+    let attachOpts = null;
+    if (msg.attachment_type === 'video') {
+      attachOpts = { downloadName: adminVideoDownloadName(), showDelete: true, msgId: msg.id };
+    }
+    const attachHtml = (typeof renderChatAttachment === 'function')
+      ? renderChatAttachment(msg, attachOpts) : '';
 
     div.innerHTML = `
       <div class="admin-chat-avatar">${avatarText}</div>
@@ -317,9 +324,23 @@ function updateUnreadBadge(count) {
 
 /* ---- Chat attachment state ---- */
 let adminChatSelectedFile = null;
+let adminChatVideoProcessing = false;
+let adminChatUploadControls = null; // set during an upload so Stop can abort it
+
+/* Stop button: aborts an in-progress upload, or a running compression. */
+function cancelAdminChatUpload() {
+  if (adminChatUploadControls && typeof adminChatUploadControls.abort === 'function') {
+    adminChatUploadControls.abort();       // upload phase → abort the XHR
+  } else if (typeof cancelVideoWork === 'function') {
+    cancelVideoWork();                     // compression phase → stop ffmpeg
+  }
+  showAdminVideoProgress('Stopping…', null);
+}
 
 /* ---- Send Message ---- */
 async function sendMessage() {
+  if (adminChatVideoProcessing) return; // wait for the video to finish compressing
+
   const input = document.getElementById('chatInput');
   const message = input.value.trim();
 
@@ -332,7 +353,16 @@ async function sendMessage() {
   try {
     let attachment = null;
     if (adminChatSelectedFile) {
-      attachment = await uploadChatAttachment(adminChatSelectedFile);
+      const fileToSend = adminChatSelectedFile;
+      const isVideo = fileToSend.type && fileToSend.type.indexOf('video/') === 0;
+      adminChatUploadControls = {};
+      if (isVideo) showAdminVideoProgress('Uploading…', 0);
+      const uploader = (typeof uploadChatAttachmentWithProgress === 'function')
+        ? uploadChatAttachmentWithProgress
+        : (f) => uploadChatAttachment(f);
+      attachment = await uploader(fileToSend, (p) => {
+        if (isVideo) showAdminVideoProgress('Uploading…', p.percent);
+      }, adminChatUploadControls);
     }
 
     const { error } = await client.from('chat_messages').insert({
@@ -352,9 +382,14 @@ async function sendMessage() {
     clearAdminChatAttachment();
     await loadChatMessages();
   } catch (err) {
-    console.error("Error sending message:", err);
-    alert(err.message || "Could not send message. Please try again.");
+    if (err && err.message === '__CANCELLED__') {
+      clearAdminChatAttachment();          // admin pressed Stop — quiet clear
+    } else {
+      console.error("Error sending message:", err);
+      alert(err.message || "Could not send message. Please try again.");
+    }
   } finally {
+    adminChatUploadControls = null;
     sendBtn.disabled = false;
     sendBtn.textContent = '➤';
   }
@@ -395,9 +430,134 @@ function showAdminAttachPreview(file, type) {
 function clearAdminChatAttachment() {
   adminChatSelectedFile = null;
   const preview = document.getElementById('attachPreview');
-  if (preview) { preview.innerHTML = ''; preview.classList.add('hide'); }
+  if (preview) { preview.innerHTML = ''; preview.className = 'attach-preview hide'; }
   const fileInput = document.getElementById('chatFileInput');
   if (fileInput) fileInput.value = '';
+  const videoInput = document.getElementById('chatVideoInput');
+  if (videoInput) videoInput.value = '';
+}
+
+/* ==========================================================================
+   Intro video (admin): download filename, select+compress, delete
+   ========================================================================== */
+
+/* Build the download filename: intro_<email>_<token>.mp4 */
+function adminVideoDownloadName() {
+  const email = (submissionData && submissionData.email) ? submissionData.email : 'user';
+  const token = (submissionData && submissionData.tracking_token)
+    ? submissionData.tracking_token
+    : (submissionId || '');
+  const safeEmail = String(email).replace(/[^a-zA-Z0-9._-]/g, '_');
+  const safeToken = String(token).replace(/[^a-zA-Z0-9._-]/g, '_');
+  return 'intro_' + safeEmail + (safeToken ? '_' + safeToken : '') + '.mp4';
+}
+
+function setAdminChatBusy(busy) {
+  adminChatVideoProcessing = busy;
+  ['sendBtn', 'videoBtn'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.disabled = busy;
+  });
+  const attach = document.querySelector('.chat-attach-btn');
+  if (attach) attach.disabled = busy;
+}
+
+function showAdminVideoProgress(note, percent) {
+  const preview = document.getElementById('attachPreview');
+  if (!preview) return;
+  preview.className = 'attach-preview video-working';
+  const pct = (typeof percent === 'number') ? Math.round(percent) : null;
+  preview.innerHTML =
+    '<div class="vp-row">' +
+      '<span class="vp-label">' + escapeHtml(note || 'Processing…') + '</span>' +
+      (pct !== null ? '<span class="vp-pct">' + pct + '%</span>' : '') +
+      '<button type="button" class="vp-cancel" onclick="cancelAdminChatUpload()" title="Stop">✕ Stop</button>' +
+    '</div>' +
+    '<div class="vp-bar"><div class="vp-fill" style="width:' + (pct !== null ? pct : 8) + '%"></div></div>';
+  preview.classList.remove('hide');
+}
+
+function showAdminVideoReady(file, wasCompressed) {
+  const preview = document.getElementById('attachPreview');
+  if (!preview) return;
+  preview.className = 'attach-preview';
+  const sizeTxt = (file.size / (1024 * 1024)).toFixed(1) + 'MB';
+  const tag = wasCompressed ? 'compressed' : 'ready';
+  preview.innerHTML =
+    '<span style="font-size:22px;">🎥</span>' +
+    '<span class="ap-name">Intro video &middot; ' + sizeTxt + ' (' + tag + ')</span>' +
+    '<button type="button" class="ap-remove" onclick="clearAdminChatAttachment()" title="Remove" aria-label="Remove video">✕</button>';
+  preview.classList.remove('hide');
+}
+
+async function handleAdminChatVideoSelect(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (adminChatVideoProcessing) return;
+
+  if (typeof compressVideoIfNeeded !== 'function') {
+    alert('Video feature is still loading. Please refresh and try again.');
+    input.value = '';
+    return;
+  }
+
+  adminChatSelectedFile = null;
+  setAdminChatBusy(true);
+  showAdminVideoProgress('Checking video…', null);
+
+  try {
+    const result = await compressVideoIfNeeded(file, (p) => {
+      if (p.phase === 'loading') showAdminVideoProgress(p.note || 'Preparing video tools…', null);
+      else showAdminVideoProgress(p.note || 'Compressing…', p.percent);
+    });
+    adminChatSelectedFile = result.file;
+    showAdminVideoReady(result.file, result.compressed);
+  } catch (err) {
+    if (err && err.message === '__CANCELLED__') {
+      clearAdminChatAttachment();          // admin stopped — quiet clear
+    } else {
+      console.error('Video error:', err);
+      alert(err.message || 'Could not process this video.');
+      clearAdminChatAttachment();
+    }
+  } finally {
+    setAdminChatBusy(false);
+    input.value = '';
+  }
+}
+
+/* Delete an intro video: remove the storage file AND clear the message's
+   attachment columns so it stops showing and storage stays clean. */
+async function deleteChatVideo(msgId, url) {
+  if (!msgId) return;
+  if (!confirm('Delete this intro video permanently?\n\nIt will be removed from storage and cannot be undone.')) {
+    return;
+  }
+
+  let storageWarn = '';
+  try {
+    if (url && typeof deleteChatAttachment === 'function') {
+      await deleteChatAttachment(url);
+    }
+  } catch (e) {
+    storageWarn = (e && e.message) ? e.message : 'the stored file may remain';
+    console.warn('Storage delete failed:', storageWarn);
+  }
+
+  try {
+    const { error } = await client
+      .from('chat_messages')
+      .update({ attachment_url: null, attachment_type: null, attachment_name: null })
+      .eq('id', msgId);
+    if (error) throw error;
+    await loadChatMessages();
+    if (storageWarn) {
+      alert('The video reference was removed, but the stored file could not be deleted (' +
+        storageWarn + '). Please check Storage in Supabase.');
+    }
+  } catch (err) {
+    console.error('Delete video (db) error:', err);
+    alert(err.message || 'Could not delete the video.');
+  }
 }
 
 function autoGrowAdminChat(el) {

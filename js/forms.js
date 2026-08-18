@@ -33,7 +33,7 @@ function validateField(input) {
   if (input.hasAttribute("required") && !val) { setError(field, "err.required"); return false; }
   if (input.dataset.type === "phone" && val) {
     const digits = val.replace(/[^0-9]/g, "");
-    if (digits.length < 10) { setError(field, "err.phone"); return false; }
+    if (digits.length < 6 || digits.length > 15) { setError(field, "err.phone"); return false; }
   }
   if (input.dataset.type === "email" && val) {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -71,6 +71,15 @@ function initForm(formId, successId) {
 
     const data = Object.fromEntries(new FormData(form).entries());
     delete data.company_website;
+
+    // International phone: merge the selected country dial code (phone_country)
+    // with the national digits into one stored value like "+91 9876543210".
+    if (typeof data.phone_country !== "undefined") {
+      const natDigits = String(data.phone || "").replace(/[^0-9]/g, "");
+      const dial = String(data.phone_country || "").replace(/[^0-9]/g, "");
+      data.phone = natDigits ? ((dial ? "+" + dial + " " : "") + natDigits) : "";
+      delete data.phone_country;
+    }
 
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalTxt = submitBtn ? submitBtn.textContent : "";

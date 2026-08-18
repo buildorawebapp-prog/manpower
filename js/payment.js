@@ -30,10 +30,22 @@ function showStep(stepNum) {
 async function submitBasicForm(event) {
   event.preventDefault();
 
+  // International phone: combine selected country dial code + national digits
+  // into a single stored value like "+91 9876543210".
+  const phoneInputEl = document.getElementById('phone');
+  const phoneCountryEl = document.getElementById('phoneCountry');
+  const phoneDigits = window.PhoneInput
+    ? PhoneInput.getDigits(phoneInputEl)
+    : String((phoneInputEl && phoneInputEl.value) || '').replace(/[^0-9]/g, '');
+  const fullPhone = window.PhoneInput
+    ? PhoneInput.getFullNumber(phoneCountryEl, phoneInputEl)
+    : ((phoneCountryEl && phoneCountryEl.value
+        ? '+' + String(phoneCountryEl.value).replace(/[^0-9]/g, '') + ' ' : '') + phoneDigits);
+
   // Collect form data
   candidateData = {
     full_name: document.getElementById('fullName').value.trim(),
-    phone: document.getElementById('phone').value.trim(),
+    phone: fullPhone,
     email: document.getElementById('email').value.trim(),
     trade: document.getElementById('trade').value,
     experience: document.getElementById('experience').value,
@@ -53,10 +65,9 @@ async function submitBasicForm(event) {
     return;
   }
 
-  // Phone validation (10 digits)
-  const phoneRegex = /^[0-9]{10}$/;
-  if (!phoneRegex.test(candidateData.phone.replace(/[^0-9]/g, ''))) {
-    alert('Please enter a valid 10-digit phone number');
+  // Phone validation (flexible 6–15 digits to support any country)
+  if (phoneDigits.length < 6 || phoneDigits.length > 15) {
+    alert('Please enter a valid phone number');
     return;
   }
 

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=10" />
+  <link rel="stylesheet" href="css/style.css?v=12" />
   <style>
     /* Dark theme styles */
     body.dark-theme {
@@ -71,6 +71,14 @@
       border-color: #252d3e;
     }
     body.dark-theme .chat-attach-btn:hover {
+      background: #252d3e;
+      border-color: var(--saffron);
+    }
+    body.dark-theme .chat-video-btn {
+      background: #1e2636;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-video-btn:hover {
       background: #252d3e;
       border-color: var(--saffron);
     }
@@ -631,7 +639,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js?v=3"></script>
-  <script src="js/chat-attachments.js?v=1"></script>
+  <script src="js/chat-attachments.js?v=4"></script>
   <script src="js/app.js?v=3"></script>
   <script>
     let currentUserId = null;
@@ -890,7 +898,9 @@
             <div id="attachPreview" class="attach-preview hide"></div>
             <div class="chat-input-row">
               <input type="file" id="chatFileInput" accept="image/*,application/pdf" style="display:none" onchange="handleChatFileSelect(this)" />
+              <input type="file" id="chatVideoInput" accept="video/*" style="display:none" onchange="handleChatVideoSelect(this)" />
               <button type="button" class="chat-attach-btn" onclick="document.getElementById('chatFileInput').click()" title="Attach image or PDF" aria-label="Attach file">📎</button>
+              <button type="button" id="videoBtn" class="chat-video-btn" onclick="document.getElementById('chatVideoInput').click()" title="Record / upload a 40-second intro video" aria-label="Intro video">🎥</button>
               <textarea id="chatInput" class="chat-input" rows="1" placeholder="Type a message..." oninput="autoGrowChat(this)"></textarea>
               <button id="sendBtn" class="chat-send-btn" onclick="sendMessage()" title="Send" aria-label="Send">➤</button>
             </div>
@@ -956,6 +966,7 @@
 
     async function sendMessage() {
       if (!selectedSubmission) return;
+      if (chatVideoProcessing) return; // wait for the video to finish compressing
 
       const input = document.getElementById('chatInput');
       const message = input.value.trim();
@@ -971,7 +982,16 @@
         let attachment = null;
         if (chatSelectedFile) {
           sendBtn.textContent = '⏳';
-          attachment = await uploadChatAttachment(chatSelectedFile);
+          const fileToSend = chatSelectedFile;
+          const isVideo = fileToSend.type && fileToSend.type.indexOf('video/') === 0;
+          chatUploadControls = {};
+          if (isVideo) showVideoProgress('Uploading…', 0);
+          const uploader = (typeof uploadChatAttachmentWithProgress === 'function')
+            ? uploadChatAttachmentWithProgress
+            : (f) => uploadChatAttachment(f);
+          attachment = await uploader(fileToSend, (p) => {
+            if (isVideo) showVideoProgress('Uploading…', p.percent);
+          }, chatUploadControls);
         }
 
         const { error } = await client.from('chat_messages').insert({
@@ -991,9 +1011,14 @@
         clearChatAttachment();
         await loadChat(selectedSubmission.submission_type, selectedSubmission.submission_id);
       } catch (err) {
-        console.error('Error sending message:', err);
-        alert(err.message || 'Could not send message');
+        if (err && err.message === '__CANCELLED__') {
+          clearChatAttachment();            // user pressed Stop — quiet clear
+        } else {
+          console.error('Error sending message:', err);
+          alert(err.message || 'Could not send message');
+        }
       } finally {
+        chatUploadControls = null;
         sendBtn.disabled = false;
         sendBtn.textContent = '➤';
       }
@@ -1034,9 +1059,98 @@
     function clearChatAttachment() {
       chatSelectedFile = null;
       const preview = document.getElementById('attachPreview');
-      if (preview) { preview.innerHTML = ''; preview.classList.add('hide'); }
+      if (preview) { preview.innerHTML = ''; preview.className = 'attach-preview hide'; }
       const fileInput = document.getElementById('chatFileInput');
       if (fileInput) fileInput.value = '';
+      const videoInput = document.getElementById('chatVideoInput');
+      if (videoInput) videoInput.value = '';
+    }
+
+    /* ---- Intro video: select → compress (with progress) → ready to send ---- */
+    let chatVideoProcessing = false;
+    let chatUploadControls = null; // set during an upload so Stop can abort it
+
+    /* Stop button: aborts an in-progress upload, or a running compression. */
+    function cancelChatUpload() {
+      if (chatUploadControls && typeof chatUploadControls.abort === 'function') {
+        chatUploadControls.abort();          // upload phase → abort the XHR
+      } else if (typeof cancelVideoWork === 'function') {
+        cancelVideoWork();                   // compression phase → stop ffmpeg
+      }
+      showVideoProgress('Stopping…', null);
+    }
+
+    function setChatBusy(busy) {
+      chatVideoProcessing = busy;
+      const ids = ['sendBtn', 'videoBtn'];
+      ids.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = busy; });
+      const attach = document.querySelector('.chat-attach-btn');
+      if (attach) attach.disabled = busy;
+    }
+
+    function showVideoProgress(note, percent) {
+      const preview = document.getElementById('attachPreview');
+      if (!preview) return;
+      preview.className = 'attach-preview video-working';
+      const pct = (typeof percent === 'number') ? Math.round(percent) : null;
+      preview.innerHTML =
+        '<div class="vp-row">' +
+          '<span class="vp-label">' + escapeHtml(note || 'Processing…') + '</span>' +
+          (pct !== null ? '<span class="vp-pct">' + pct + '%</span>' : '') +
+          '<button type="button" class="vp-cancel" onclick="cancelChatUpload()" title="Stop">✕ Stop</button>' +
+        '</div>' +
+        '<div class="vp-bar"><div class="vp-fill" style="width:' + (pct !== null ? pct : 8) + '%"></div></div>';
+      preview.classList.remove('hide');
+    }
+
+    function showVideoReady(file, wasCompressed) {
+      const preview = document.getElementById('attachPreview');
+      if (!preview) return;
+      preview.className = 'attach-preview';
+      const sizeTxt = (file.size / (1024 * 1024)).toFixed(1) + 'MB';
+      const tag = wasCompressed ? 'compressed' : 'ready';
+      preview.innerHTML =
+        '<span style="font-size:22px;">🎥</span>' +
+        '<span class="ap-name">Intro video &middot; ' + sizeTxt + ' (' + tag + ')</span>' +
+        '<button type="button" class="ap-remove" onclick="clearChatAttachment()" title="Remove" aria-label="Remove video">✕</button>';
+      preview.classList.remove('hide');
+    }
+
+    async function handleChatVideoSelect(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      if (chatVideoProcessing) return;
+
+      if (typeof compressVideoIfNeeded !== 'function') {
+        alert('Video feature is still loading. Please refresh and try again.');
+        input.value = '';
+        return;
+      }
+
+      // Start fresh: drop any previously chosen attachment.
+      chatSelectedFile = null;
+      setChatBusy(true);
+      showVideoProgress('Checking video…', null);
+
+      try {
+        const result = await compressVideoIfNeeded(file, (p) => {
+          if (p.phase === 'loading') showVideoProgress(p.note || 'Preparing video tools…', null);
+          else showVideoProgress(p.note || 'Compressing…', p.percent);
+        });
+        chatSelectedFile = result.file;
+        showVideoReady(result.file, result.compressed);
+      } catch (err) {
+        if (err && err.message === '__CANCELLED__') {
+          clearChatAttachment();            // user stopped — quiet clear
+        } else {
+          console.error('Video error:', err);
+          alert(err.message || 'Could not process this video.');
+          clearChatAttachment();
+        }
+      } finally {
+        setChatBusy(false);
+        input.value = '';
+      }
     }
 
     function autoGrowChat(el) {

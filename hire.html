@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=5" />
+  <link rel="stylesheet" href="css/style.css?v=14" />
 </head>
 <body>
   <div id="header-slot"></div>
@@ -47,7 +47,10 @@
             </div>
             <div class="field">
               <label><span data-i18n="f.phone"></span> <span class="req">*</span></label>
-              <input type="tel" name="phone" data-type="phone" required placeholder="+91 " />
+              <div class="phone-group">
+                <select name="phone_country" class="phone-country" aria-label="Country code"></select>
+                <input type="tel" name="phone" data-type="phone" required placeholder="98765 43210" autocomplete="tel-national" class="phone-number" />
+              </div>
               <div class="err-msg"></div>
             </div>
           </div>
@@ -96,12 +99,21 @@
   <script src="js/supabase.js?v=3"></script>
   <script src="js/i18n.js?v=3"></script>
   <script src="js/app.js?v=3"></script>
-  <script src="js/forms.js?v=6"></script>
+  <script src="js/phone-input.js?v=2"></script>
+  <script src="js/forms.js?v=7"></script>
   <script>
     function fillForm() {
       fillTradeSelect(document.getElementById("tradeSelect"));
       fillLocationList(document.getElementById("locList"));
       applyLang(getLang());
+      // International phone field — guarded so the second fillForm() call
+      // (after live data) doesn't reset the chosen country or double-bind.
+      if (window.PhoneInput) {
+        const pc = document.querySelector('select[name="phone_country"]');
+        if (pc && !pc.options.length) {
+          PhoneInput.initPhoneField(pc, document.querySelector('input[name="phone"]'), 'IN');
+        }
+      }
     }
     fillForm();
     initShell("hire.html");
