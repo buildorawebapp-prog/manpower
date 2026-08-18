@@ -58,7 +58,7 @@ const I18N = {
     "contact.sub": "Call us or message on WhatsApp — we usually reply within a few hours.",
     "contact.call": "Call Now", "contact.whatsapp": "WhatsApp Us",
 
-    "footer.about": "Connecting skilled and semi-skilled workers from around the world with trusted employers and international job opportunities.",
+    "footer.about": "Go Hire Consultancy We connect skilled and semi-skilled workers from around the world with trusted employers and the right international job opportunities.",
     "footer.company": "Company", "footer.services": "Services", "footer.getstarted": "Get Started",
     "footer.rights": "All rights reserved.",
 
@@ -167,7 +167,7 @@ const I18N = {
     "contact.sub": "कॉल करें या WhatsApp पर संदेश भेजें — हम कुछ घंटों में जवाब देते हैं।",
     "contact.call": "अभी कॉल करें", "contact.whatsapp": "WhatsApp करें",
 
-    "footer.about": "Go Hire Consultancy पूरे भारत में व्यवसायों को सत्यापित कुशल कामगार उपलब्ध कराता है।",
+    "footer.about": "Go Hire Consultancy दुनिया भर के कुशल और अर्ध-कुशल कामगारों को विश्वसनीय नियोक्ताओं और सही अंतरराष्ट्रीय नौकरी के अवसरों से जोड़ता है।",
     "footer.company": "कंपनी", "footer.services": "सेवाएँ", "footer.getstarted": "शुरू करें",
     "footer.rights": "सर्वाधिकार सुरक्षित।",
 
@@ -258,7 +258,7 @@ const I18N = {
     "contact.sub": "কল করুন বা WhatsApp-এ বার্তা দিন — আমরা কয়েক ঘণ্টায় উত্তর দিই।",
     "contact.call": "এখনই কল করুন", "contact.whatsapp": "WhatsApp করুন",
 
-    "footer.about": "Go Hire Consultancy সারা ভারতে ব্যবসার জন্য যাচাইকৃত দক্ষ কর্মী সরবরাহ করে।",
+    "footer.about": "Go Hire Consultancy সারা বিশ্বের দক্ষ ও অর্ধ-দক্ষ কর্মীদের বিশ্বস্ত নিয়োগকর্তা এবং সঠিক আন্তর্জাতিক চাকরির সুযোগের সঙ্গে সংযুক্ত করে।",
     "footer.company": "কোম্পানি", "footer.services": "সেবা", "footer.getstarted": "শুরু করুন",
     "footer.rights": "সর্বস্বত্ব সংরক্ষিত।",
 
@@ -322,7 +322,7 @@ const I18N = {
     "contact.sub": "அழையுங்கள் அல்லது WhatsApp-இல் செய்தி அனுப்புங்கள் — சில மணிநேரத்தில் பதிலளிக்கிறோம்.",
     "contact.call": "இப்போது அழைக்கவும்", "contact.whatsapp": "WhatsApp செய்யுங்கள்",
 
-    "footer.about": "Go Hire Consultancy இந்தியா முழுவதும் நிறுவனங்களுக்கு சரிபார்க்கப்பட்ட திறமையான தொழிலாளர்களை வழங்குகிறது.",
+    "footer.about": "Go Hire Consultancy உலகம் முழுவதும் உள்ள திறமையான மற்றும் அரைத் திறமையான தொழிலாளர்களை நம்பகமான நிறுவனங்கள் மற்றும் சரியான சர்வதேச வேலை வாய்ப்புகளுடன் இணைக்கிறது.",
     "footer.company": "நிறுவனம்", "footer.services": "சேவைகள்", "footer.getstarted": "தொடங்குங்கள்",
     "footer.rights": "அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
 
@@ -386,7 +386,7 @@ const I18N = {
     "contact.sub": "కాల్ చేయండి లేదా WhatsApp లో సందేశం పంపండి — కొన్ని గంటల్లో స్పందిస్తాం.",
     "contact.call": "ఇప్పుడు కాల్ చేయండి", "contact.whatsapp": "WhatsApp చేయండి",
 
-    "footer.about": "Go Hire Consultancy భారతదేశం అంతటా వ్యాపారాలకు ధృవీకరించిన నైపుణ్యం గల కార్మికులను అందిస్తుంది.",
+    "footer.about": "Go Hire Consultancy ప్రపంచవ్యాప్తంగా ఉన్న నైపుణ్యం కలిగిన మరియు అర్ధ-నైపుణ్యం కలిగిన కార్మికులను విశ్వసనీయమైన సంస్థలు మరియు సరైన అంతర్జాతీయ ఉద్యోగ అవకాశాలతో అనుసంధానిస్తుంది.",
     "footer.company": "కంపెనీ", "footer.services": "సేవలు", "footer.getstarted": "ప్రారంభించండి",
     "footer.rights": "అన్ని హక్కులు రిజర్వ్డ్.",
 
@@ -450,7 +450,7 @@ const I18N = {
     "contact.sub": "कॉल करा किंवा WhatsApp वर संदेश पाठवा — आम्ही काही तासांत उत्तर देतो.",
     "contact.call": "आता कॉल करा", "contact.whatsapp": "WhatsApp करा",
 
-    "footer.about": "Go Hire Consultancy संपूर्ण भारतात व्यवसायांना सत्यापित कुशल कामगार पुरवते.",
+    "footer.about": "Go Hire Consultancy जगभरातील कुशल आणि अर्ध-कुशल कामगारांना विश्वासार्ह नियोक्ते आणि योग्य आंतरराष्ट्रीय नोकरीच्या संधींशी जोडते.",
     "footer.company": "कंपनी", "footer.services": "सेवा", "footer.getstarted": "सुरू करा",
     "footer.rights": "सर्व हक्क राखीव.",
 
