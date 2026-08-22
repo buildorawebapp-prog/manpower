@@ -297,6 +297,9 @@ CREATE POLICY "admin all campaigns" ON campaigns
 --      * validates campaign_id when one is supplied
 --      * forces the candidate's trade to the campaign's trade (so a crafted
 --        request can't book a Fitters seat as a Welder)
+--      * forces the candidate's location to the campaign's location when the
+--        campaign specifies one (the apply form locks that field, and the
+--        server is the authority — a tampered DOM must not change it)
 --      * stores campaign_id on the candidate row
 --    Error strings are prefixed CAMPAIGN_* so the frontend can show a clean,
 --    friendly message and fall back to a normal (campaign-less) application.
@@ -318,8 +321,10 @@ DECLARE
   v_campaign_id  UUID;
   v_campaign     RECORD;
   v_trade        TEXT;
+  v_location     TEXT;
 BEGIN
-  v_trade := p_candidate_data->>'trade';
+  v_trade    := p_candidate_data->>'trade';
+  v_location := p_candidate_data->>'location';
 
   -- ---- Campaign validation (only when the application came from one) ------
   IF COALESCE(p_candidate_data->>'campaign_id', '') <> '' THEN
@@ -375,6 +380,13 @@ BEGIN
 
     -- Server is the authority on which trade this seat belongs to.
     v_trade := v_campaign.trade;
+
+    -- Same for the posting's location, but only when the campaign actually
+    -- names one — campaigns without a location leave the applicant's own
+    -- preferred location untouched.
+    IF COALESCE(TRIM(v_campaign.location), '') <> '' THEN
+      v_location := TRIM(v_campaign.location);
+    END IF;
   END IF;
 
   -- ---- Step 1: Create candidate record (pending status) -------------------
@@ -399,7 +411,7 @@ BEGIN
     p_candidate_data->>'gender',
     v_trade,
     p_candidate_data->>'experience',
-    p_candidate_data->>'location',
+    v_location,
     p_candidate_data->>'resume_url',
     v_campaign_id,
     'pending',

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=16" />
+  <link rel="stylesheet" href="css/style.css?v=17" />
   <style>
     /* Payment Form Specific Styles */
     .step-indicator {
@@ -323,6 +323,7 @@
               <label>Preferred Location <span class="req">*</span></label>
               <input type="text" id="location" list="locList" required />
               <datalist id="locList"></datalist>
+              <span class="locked-hint" id="locationLockHint" style="display:none"></span>
             </div>
 
             <button type="submit" class="btn btn-primary btn-lg btn-block">
@@ -414,7 +415,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js?v=3"></script>
   <script src="js/config.js?v=1"></script>
-  <script src="js/i18n.js?v=4"></script>
+  <script src="js/i18n.js?v=5"></script>
   <script src="js/app.js?v=4"></script>
   <script src="js/campaigns.js?v=2"></script>
   <script src="js/phone-input.js?v=2"></script>
@@ -444,8 +445,19 @@
 
     /* Re-applied at the end of fillFormDropdowns(), because that function runs
        twice (fallback trades, then live trades) and the second run would
-       otherwise wipe the pre-selection. */
-    function reapplyCampaignTrade() {
+       otherwise wipe the pre-selection.
+
+       Locks BOTH campaign-decided fields:
+         · Trade/Skill      — always locked (every campaign has a trade)
+         · Preferred Location — locked only when the campaign specifies one
+       Both are re-validated/overridden server-side in create_payment_order(),
+       so a tampered DOM can't change what actually gets stored. */
+    function applyCampaignLocks() {
+      lockCampaignTrade();
+      lockCampaignLocation();
+    }
+
+    function lockCampaignTrade() {
       const sel  = document.getElementById('trade');
       const hint = document.getElementById('tradeLockHint');
       if (!sel) return;
@@ -463,6 +475,42 @@
       sel.classList.add('is-locked');
       if (hint) {
         hint.textContent = '🔒 ' + t('camp.tradeLocked');
+        hint.style.display = '';
+      }
+    }
+
+    /* Preferred Location works like the trade lock, with two differences:
+         1. It is a text input, so we use `readonly` instead of `disabled`.
+            readonly still submits the value, keeps it selectable/copyable, and
+            stops the mobile keyboard from opening — `disabled` would grey it out
+            so hard that people think the form is broken.
+         2. Not every campaign sets a location. With no campaign location the
+            field stays a normal free-text field with its datalist suggestions.
+       The `list` attribute is stripped while locked so the suggestion dropdown
+       can't open on a field the user isn't allowed to change. */
+    function lockCampaignLocation() {
+      const input = document.getElementById('location');
+      const hint  = document.getElementById('locationLockHint');
+      if (!input) return;
+
+      const campLoc = (CAMPAIGN_CTX && CAMPAIGN_CTX.location || '').trim();
+
+      if (!campLoc) {
+        input.readOnly = false;
+        input.classList.remove('is-locked');
+        input.removeAttribute('aria-readonly');
+        if (!input.hasAttribute('list')) input.setAttribute('list', 'locList');
+        if (hint) hint.style.display = 'none';
+        return;
+      }
+
+      input.value = campLoc;
+      input.readOnly = true;
+      input.classList.add('is-locked');
+      input.setAttribute('aria-readonly', 'true');
+      input.removeAttribute('list');
+      if (hint) {
+        hint.textContent = '🔒 ' + t('camp.locationLocked');
         hint.style.display = '';
       }
     }
@@ -504,11 +552,13 @@
     }
 
     /* Called by payment.js if the last seat went while the user was filling
-       the form — drops the link and unlocks the trade. */
+       the form — drops the link and unlocks BOTH campaign-locked fields. The
+       location text is deliberately left in place: it is what the person came
+       here for, so they start from it and can edit rather than retype. */
     function releaseCampaignContext() {
       CAMPAIGN_CTX = null;
       window.CAMPAIGN_CONTEXT = null;
-      reapplyCampaignTrade();
+      applyCampaignLocks();
       renderCampaignWarn();
     }
 
@@ -521,14 +571,14 @@
         CAMPAIGN_CTX = null;
         window.CAMPAIGN_CONTEXT = null;
         renderCampaignWarn();
-        reapplyCampaignTrade();
+        applyCampaignLocks();
         return;
       }
 
       CAMPAIGN_CTX = c;
-      window.CAMPAIGN_CONTEXT = { id: c.id, trade: c.trade, title: c.title };
+      window.CAMPAIGN_CONTEXT = { id: c.id, trade: c.trade, location: c.location || '', title: c.title };
       renderCampaignBanner(c);
-      reapplyCampaignTrade();
+      applyCampaignLocks();
     }
 
     // Fill dropdowns on page load
@@ -559,7 +609,7 @@
       }
 
       // Rebuilding the trade list clears any campaign pre-selection — restore it.
-      reapplyCampaignTrade();
+      applyCampaignLocks();
     }
 
     // File input drag & drop
