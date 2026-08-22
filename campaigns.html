@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Hiring Campaigns — Go Hire Consultancy</title>
+  <meta name="description" content="Live hiring campaigns from Go Hire Consultancy. See how many seats are left for each trade and apply directly — fitters, welders, electricians, plumbers and more." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=16" />
+</head>
+<body>
+  <div id="header-slot"></div>
+
+  <section class="page-hero with-photo" style="--hero-img:url('/images/hero.jpg')">
+    <div class="container">
+      <h1 data-i18n="camp.title"></h1>
+      <p data-i18n="camp.sub"></p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="camp-toolbar">
+        <div class="camp-field">
+          <span class="si">🔍</span>
+          <input type="text" id="campSearch" data-i18n-ph="camp.search" oninput="applyCampaignFilters()" />
+        </div>
+        <div class="camp-field">
+          <select id="campTrade" onchange="applyCampaignFilters()"></select>
+        </div>
+        <div class="camp-field">
+          <select id="campLocation" onchange="applyCampaignFilters()"></select>
+        </div>
+      </div>
+
+      <div class="camp-count" id="campCount"></div>
+      <div class="camp-grid" id="campGrid"></div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="container">
+      <div class="contact-band with-photo reveal" style="--cta-img:url('/images/cta.jpg')">
+        <h2 data-i18n="contact.title"></h2>
+        <p data-i18n="contact.sub"></p>
+        <div class="contact-actions">
+          <a class="btn btn-white btn-lg" data-call href="#">📞 <span data-phone-text></span></a>
+          <a class="btn btn-whatsapp btn-lg" data-whatsapp href="#">💬 <span data-i18n="contact.whatsapp"></span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-slot"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js?v=3"></script>
+  <script src="js/config.js?v=1"></script>
+  <script src="js/i18n.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
+  <script src="js/campaigns.js?v=2"></script>
+  <script>
+    /* ------------------------------------------------------------------
+       Page state. All filtering is client-side — the whole (small) live
+       campaign list is already in memory, so it stays instant on mobile.
+    ------------------------------------------------------------------ */
+    let CAMP_READY = false;
+
+    function buildCampaignFilters() {
+      const tradeSel = document.getElementById("campTrade");
+      const locSel   = document.getElementById("campLocation");
+
+      // Only offer filters that actually match a live campaign.
+      const trades = [...new Set(CAMPAIGNS.map(c => (c.trade || "").trim()).filter(Boolean))].sort();
+      const locs   = [...new Set(CAMPAIGNS.map(c => (c.location || "").trim()).filter(Boolean))].sort();
+
+      const keepTrade = tradeSel.value;
+      const keepLoc   = locSel.value;
+
+      tradeSel.innerHTML = `<option value="">${t("camp.allTrades")}</option>` +
+        trades.map(x => `<option value="${x.replace(/"/g, "&quot;")}">${campaignTradeIcon(x)} ${escapeHtml(x)}</option>`).join("");
+      locSel.innerHTML = `<option value="">${t("camp.allLocations")}</option>` +
+        locs.map(x => `<option value="${x.replace(/"/g, "&quot;")}">📍 ${escapeHtml(x)}</option>`).join("");
+
+      if (trades.includes(keepTrade)) tradeSel.value = keepTrade;
+      if (locs.includes(keepLoc))     locSel.value = keepLoc;
+    }
+
+    function applyCampaignFilters() {
+      const grid  = document.getElementById("campGrid");
+      const count = document.getElementById("campCount");
+
+      if (!CAMP_READY) {
+        grid.innerHTML = campaignSkeletons(3);
+        count.textContent = "";
+        return;
+      }
+
+      const q     = (document.getElementById("campSearch").value || "").trim().toLowerCase();
+      const trade = document.getElementById("campTrade").value;
+      const loc   = document.getElementById("campLocation").value;
+
+      let list = CAMPAIGNS.slice();
+      if (trade) list = list.filter(c => (c.trade || "").trim() === trade);
+      if (loc)   list = list.filter(c => (c.location || "").trim() === loc);
+      if (q) {
+        list = list.filter(c =>
+          [c.title, c.trade, c.location, c.description, c.salary_text]
+            .filter(Boolean).join(" ").toLowerCase().includes(q));
+      }
+
+      // Open campaigns first, then the filled/closed ones.
+      list.sort((a, b) => (campaignIsOpen(b) ? 1 : 0) - (campaignIsOpen(a) ? 1 : 0));
+
+      if (!list.length) {
+        const noneAtAll = CAMPAIGNS.length === 0;
+        grid.innerHTML = `
+          <div class="camp-empty">
+            <div class="em">${noneAtAll ? "📭" : "🔍"}</div>
+            <h3>${escapeHtml(t(noneAtAll ? "camp.emptyT" : "camp.noMatchT"))}</h3>
+            <p>${escapeHtml(t(noneAtAll ? "camp.emptyP" : "camp.noMatchP"))}</p>
+            <a class="btn btn-primary btn-lg" href="apply.html">${escapeHtml(t("camp.applyAnyway"))} →</a>
+          </div>`;
+        count.textContent = "";
+        return;
+      }
+
+      grid.innerHTML = list.map(campaignCardHTML).join("");
+      const openCount = list.filter(campaignIsOpen).length;
+      count.textContent = list.length + " " +
+        (list.length === 1 ? t("camp.campaign") : t("camp.campaigns")) +
+        (openCount ? " · " + openCount + " " + t("camp.acceptingNow") : "");
+    }
+
+    async function loadCampaignsPage() {
+      applyCampaignFilters();            // skeletons while we wait
+      await fetchCampaigns();
+      CAMP_READY = true;
+      buildCampaignFilters();
+      applyCampaignFilters();
+      applyLang(getLang());
+    }
+
+    initShell("campaigns.html");
+    // Trades load first so card icons/photos are right on first paint.
+    loadLiveData(loadCampaignsPage);
+  </script>
+</body>
+</html>

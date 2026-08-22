@@ -67,7 +67,15 @@ alter table trades     enable row level security;
 alter table settings   enable row level security;
 
 -- Public visitors: can SUBMIT forms (insert), but cannot read/edit anyone's data.
-create policy "public can apply"      on candidates for insert to anon with check (true);
+--
+-- ⚠️  "public can apply" on candidates was REMOVED (see campaigns_migration.sql §4b).
+--     `with check (true)` let the browser set any column — including
+--     payment_status='success' and campaign_id — which would let anyone burn
+--     every campaign seat with just the public anon key. Candidate rows are now
+--     created only by create_payment_order() (SECURITY DEFINER, service_role),
+--     with a hardened anon fallback policy named "candidates_insert_pending".
+--     Do NOT re-add the line below.
+-- create policy "public can apply"   on candidates for insert to anon with check (true);
 create policy "public can request"    on employers  for insert to anon with check (true);
 
 -- Public visitors: can READ active locations / trades / settings (for the website).

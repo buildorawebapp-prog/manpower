@@ -146,6 +146,7 @@ function buildHeader(active) {
   const links = [
     { href: "index.html",     key: "nav.home" },
     { href: "index.html#services", key: "nav.services" },
+    { href: "campaigns.html", key: "nav.campaigns" },
     { href: "locations.html", key: "nav.locations" },
     { href: "apply.html",     key: "nav.apply" },
   ];
@@ -216,6 +217,7 @@ function buildFooter() {
         <div>
           <h5 data-i18n="footer.services"></h5>
           <a href="index.html#services" data-i18n="nav.services"></a>
+          <a href="campaigns.html" data-i18n="nav.campaigns"></a>
           <a href="apply.html" data-i18n="nav.apply"></a>
           <a href="hire.html" data-i18n="nav.hire"></a>
         </div>

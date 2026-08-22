@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../css/style.css?v=15" />
+  <link rel="stylesheet" href="../css/style.css?v=16" />
 </head>
 <body class="admin-body">
   <div class="admin-shell">
@@ -18,12 +18,13 @@
         <span>Go Hire Consultancy<small>Admin</small></span>
       </a>
       <nav class="admin-nav">
-        <a class="active" data-title="Dashboard" onclick="showView('dash', this)">📊 Dashboard</a>
-        <a data-title="Candidate Applications" onclick="showView('cand', this)">👷 Candidates</a>
-        <a data-title="Employer Requests" onclick="showView('emp', this)">🏢 Employers</a>
-        <a data-title="Locations" onclick="showView('loc', this)">📍 Locations</a>
-        <a data-title="Trades" onclick="showView('trade', this)">🛠️ Trades</a>
-        <a data-title="Contact Settings" onclick="showView('set', this)">⚙️ Settings</a>
+        <a class="active" data-view="dash" data-title="Dashboard" onclick="showView('dash', this)">📊 Dashboard</a>
+        <a data-view="cand" data-title="Candidate Applications" onclick="showView('cand', this)">👷 Candidates</a>
+        <a data-view="emp" data-title="Employer Requests" onclick="showView('emp', this)">🏢 Employers</a>
+        <a data-view="loc" data-title="Locations" onclick="showView('loc', this)">📍 Locations</a>
+        <a data-view="trade" data-title="Trades" onclick="showView('trade', this)">🛠️ Trades</a>
+        <a data-view="camp" data-title="Hiring Campaigns" onclick="showView('camp', this)">📣 Campaigns</a>
+        <a data-view="set" data-title="Contact Settings" onclick="showView('set', this)">⚙️ Settings</a>
         <a href="#" onclick="logout();return false" style="margin-top:20px;color:#ff9d9d">↩ Logout</a>
       </nav>
     </aside>
@@ -48,7 +49,7 @@
         </div>
 
         <div class="panel">
-          <div class="panel-head"><h3>Recent Candidates</h3><a class="mini-btn" onclick="showView('cand', document.querySelectorAll('.admin-nav a')[1])">View all</a></div>
+          <div class="panel-head"><h3>Recent Candidates</h3><a class="mini-btn" onclick="showView('cand', navLinkFor('cand'))">View all</a></div>
           <table class="table">
             <thead><tr><th>Name</th><th>Phone</th><th>Trade</th><th>Experience</th><th>Location</th><th>Status</th><th>Date</th><th></th></tr></thead>
             <tbody id="candBodyMini"></tbody>
@@ -66,6 +67,8 @@
               <button class="btn-danger" id="candDelBtn" onclick="deleteSelected('cand')" disabled>🗑 Delete selected</button>
             </div>
           </div>
+          <!-- Shown only when you arrive here from a campaign's "Applicants" button -->
+          <div id="candFilterNote" class="hide" style="padding:12px 22px;background:var(--amber-100);border-bottom:1px solid var(--line);font-weight:700;font-size:14px;color:var(--ink)"></div>
           <div style="overflow-x:auto">
             <table class="table">
               <thead><tr><th class="sel-col"><input type="checkbox" id="candSelectAll" onchange="toggleSelectAll('cand')" aria-label="Select all candidates"></th><th>Name</th><th>Phone</th><th>Trade</th><th>Experience</th><th>Location</th><th>Status</th><th>Date</th><th></th></tr></thead>
@@ -143,6 +146,39 @@
       </section>
       <input id="changePhotoFile" type="file" accept="image/*" class="hide" onchange="onChangePhoto(this)" />
 
+      <!-- CAMPAIGNS -->
+      <section id="view-camp" class="adm-view hide">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Hiring Campaigns (<span id="campCount">0</span>)</h3>
+            <div class="cadm-bar">
+              <input id="campSearch" placeholder="Search title / trade / city" oninput="onCampFilter()" />
+              <select id="campStatusFilter" onchange="onCampFilter()">
+                <option value="">All statuses</option>
+                <option value="active">Active</option>
+                <option value="filled">Filled</option>
+                <option value="draft">Draft</option>
+                <option value="closed">Closed</option>
+              </select>
+              <button class="mini-btn" onclick="recountAllCampaignSeats()" title="Recompute every campaign's filled seats from paid applications">🔄 Recount all</button>
+              <button class="btn btn-primary" onclick="openCampaignModal(null)">＋ New Campaign</button>
+            </div>
+          </div>
+          <div style="padding:22px">
+            <p style="color:var(--muted);margin-bottom:6px">
+              Active campaigns show on the public <strong>Campaigns</strong> page and on the homepage strip.
+              Workers who click <em>Apply</em> land on the normal ₹200 application form with the trade already locked in.
+            </p>
+            <p style="color:var(--muted);font-size:13px;margin-bottom:18px">
+              <strong>Display total</strong> is the big number shown to the public. <strong>Real seats</strong> is what actually
+              counts down — it drops by one on every successful ₹200 payment, and the campaign flips to <em>Filled</em> at zero.
+            </p>
+            <span id="campNote" class="hide" style="display:block;font-weight:700;margin-bottom:14px"></span>
+            <div class="cadm-grid" id="campCards"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- SETTINGS -->
       <section id="view-set" class="adm-view hide">
         <div class="panel">
@@ -166,9 +202,106 @@
     </main>
   </div>
 
+  <!-- CAMPAIGN CREATE / EDIT MODAL -->
+  <div class="cadm-modal" id="campModal">
+    <div class="cadm-back" onclick="closeCampaignModal()"></div>
+    <div class="cadm-sheet" role="dialog" aria-modal="true" aria-labelledby="campModalTitle">
+      <div class="cadm-head">
+        <h3 id="campModalTitle">New Campaign</h3>
+        <button class="cadm-x" onclick="closeCampaignModal()" aria-label="Close">×</button>
+      </div>
+      <div class="cadm-scroll">
+        <div id="cmError" class="hide" style="background:#fdecec;color:#c0272d;border:1px solid #f6d0d0;border-radius:10px;padding:11px 14px;font-weight:700;font-size:13.5px;margin-bottom:18px"></div>
+
+        <div class="cadm-form">
+          <div class="field cadm-wide">
+            <label>Campaign title *</label>
+            <input id="cmTitle" placeholder="e.g. Urgent: 10 Fitters for Dubai site" maxlength="120" />
+            <span class="cadm-hint">This is the headline workers see on the campaign card.</span>
+          </div>
+
+          <div class="field">
+            <label>Trade / Skill *</label>
+            <select id="cmTrade"></select>
+            <span class="cadm-hint">Locked on the apply form for anyone arriving from this campaign.</span>
+          </div>
+          <div class="field">
+            <label>Location</label>
+            <input id="cmLocation" list="cmLocList" placeholder="e.g. Dubai, UAE" />
+            <datalist id="cmLocList"></datalist>
+          </div>
+
+          <div class="field">
+            <label>Display total (for show) *</label>
+            <input id="cmDisplay" type="number" min="1" step="1" value="50" />
+            <span class="cadm-hint">The big “openings” number on the public card.</span>
+          </div>
+          <div class="field">
+            <label>Real available seats *</label>
+            <input id="cmSeats" type="number" min="1" step="1" value="10" />
+            <span class="cadm-hint">How many people you actually need. This is what counts down.</span>
+            <span class="cadm-hint hide" id="cmFilledNote"></span>
+          </div>
+
+          <div class="field">
+            <label>Salary text</label>
+            <input id="cmSalary" placeholder="e.g. ₹28,000 – ₹35,000 / month" maxlength="80" />
+          </div>
+          <div class="field">
+            <label>Experience required</label>
+            <input id="cmExp" placeholder="e.g. 2+ years" maxlength="60" />
+          </div>
+
+          <div class="field">
+            <label>Apply-by date</label>
+            <input id="cmDeadline" type="date" />
+            <span class="cadm-hint">Optional. Applications close after this day.</span>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="cmStatus"></select>
+            <span class="cadm-hint">Only <strong>active</strong> campaigns are visible publicly. “Filled” is set automatically at zero seats.</span>
+          </div>
+
+          <div class="field cadm-wide">
+            <label>Description</label>
+            <textarea id="cmDesc" placeholder="Work details, site, duty hours, accommodation, documents needed…" maxlength="1200"></textarea>
+          </div>
+
+          <div class="field cadm-wide">
+            <label>Banner photo</label>
+            <div class="cadm-imgrow">
+              <img id="cmPreview" class="hide" alt="Campaign banner preview" />
+              <input id="cmFile" type="file" accept="image/*" onchange="previewCampaignFile(this)" />
+              <button type="button" class="mini-btn hide" id="cmRemoveImg" onclick="removeCampaignImage()">🗑 Remove photo</button>
+            </div>
+            <span class="cadm-hint">Optional, max 5 MB. Without one, the trade icon is shown.</span>
+          </div>
+
+          <div class="field">
+            <label>Sort order</label>
+            <input id="cmSort" type="number" step="1" value="0" />
+            <span class="cadm-hint">Lower numbers appear first.</span>
+          </div>
+          <div class="field" style="display:flex;align-items:flex-end">
+            <label class="cadm-check">
+              <input type="checkbox" id="cmFeatured" /> ⭐ Feature on the homepage strip
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="cadm-foot">
+        <button class="btn btn-primary" id="campSaveBtn" onclick="saveCampaign()">Create Campaign</button>
+        <button class="mini-btn" onclick="closeCampaignModal()">Cancel</button>
+        <span class="cadm-spacer"></span>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../js/supabase.js?v=3"></script>
-  <script src="admin.js?v=7"></script>
+  <script src="admin.js?v=8"></script>
+  <script src="campaigns.js?v=1"></script>
   <script>
     initAdmin();
   </script>

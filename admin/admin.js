@@ -12,6 +12,10 @@ let ADMIN_LOCATIONS = [];   // [{id, name}]
 let ADMIN_TRADES = [];      // [{id, name}]
 let ADMIN_SETTINGS = { phone: "", whatsapp: "", email: "", company: "", address: "" };
 
+/* When set to a campaign id, the Candidates table shows only that campaign's
+   applicants. Driven by the "👥 Applicants" button in the Campaigns view. */
+let CAND_CAMPAIGN_FILTER = null;
+
 const CAND_STATUSES = ["new", "contacted", "hired", "rejected"];
 const EMP_STATUSES = ["new", "contacted", "closed"];
 
@@ -49,6 +53,11 @@ function showView(view, el) {
   document.querySelectorAll(".admin-nav a").forEach(a => a.classList.remove("active"));
   if (el) el.classList.add("active");
   document.getElementById("pageTitle").textContent = el ? el.dataset.title : "Dashboard";
+}
+/* Find a sidebar link by the view it opens — safer than indexing into the
+   node list, which shifts every time a menu item is added. */
+function navLinkFor(view) {
+  return document.querySelector('.admin-nav a[data-view="' + view + '"]');
 }
 
 /* ---- Stats ---- */
@@ -88,32 +97,59 @@ async function loadAll() {
   renderLocationsAdmin();
   renderTradesAdmin();
   loadSettings();
+
+  // Campaigns live in admin/campaigns.js. Guarded so the dashboard still
+  // works if that file is missing or the campaigns table isn't created yet.
+  if (typeof loadCampaignsAdmin === "function") { await loadCampaignsAdmin(); }
 }
 
 /* ---- Candidates ---- */
+/* Rows currently shown — respects the campaign filter, if any. */
+function visibleCandidates() {
+  if (!CAND_CAMPAIGN_FILTER) return CANDIDATES;
+  return CANDIDATES.filter(c => c.campaign_id === CAND_CAMPAIGN_FILTER);
+}
+/* Header strip that appears while a campaign filter is active. */
+function renderCandFilterNote() {
+  const note = document.getElementById("candFilterNote");
+  if (!note) return;
+  if (!CAND_CAMPAIGN_FILTER) { note.classList.add("hide"); note.innerHTML = ""; return; }
+  const camp = (typeof ADMIN_CAMPAIGNS !== "undefined" ? ADMIN_CAMPAIGNS : [])
+    .find(c => c.id === CAND_CAMPAIGN_FILTER);
+  note.innerHTML = `📣 Showing applicants for <strong>${escAttr(camp ? camp.title : "this campaign")}</strong>
+    <button class="mini-btn" style="margin-left:10px" onclick="clearCandCampaignFilter()">✕ Show all candidates</button>`;
+  note.classList.remove("hide");
+}
+function clearCandCampaignFilter() {
+  CAND_CAMPAIGN_FILTER = null;
+  renderCandidates();
+}
 function renderCandidates() {
-  document.getElementById("candBody").innerHTML = CANDIDATES.map(c => `
-    <tr>
-      <td class="sel-col"><input type="checkbox" class="row-check" value="${c.id}" onchange="onRowCheck('cand')" aria-label="Select ${escAttr(c.full_name)}"></td>
-      <td><strong>${c.full_name}</strong></td>
-      <td>${c.phone}</td>
-      <td>${c.trade}</td>
-      <td>${c.experience || ""}</td>
-      <td>${c.location || ""}</td>
-      <td>
-        <div class="status-cell">
-          ${badge(c.status, "candBadge-" + c.id)}
-          <select class="mini-btn status-select" onchange="setCandStatus('${c.id}', this.value)">
-            ${statusOptions(CAND_STATUSES, c.status)}
-          </select>
-        </div>
-      </td>
-      <td>${fmtDate(c.created_at)}</td>
-      <td>
-        <a class="mini-btn" href="candidate-detail.html?id=${c.id}">View Details</a>
-      </td>
-    </tr>`).join("") || emptyRow(9);
-  document.getElementById("candCount").textContent = CANDIDATES.length;
+  const rows = visibleCandidates();
+  document.getElementById("candBody").innerHTML = rows.map(c => `
+      <tr>
+        <td class="sel-col"><input type="checkbox" class="row-check" value="${c.id}" onchange="onRowCheck('cand')" aria-label="Select ${escAttr(c.full_name)}"></td>
+        <td><strong>${c.full_name}</strong></td>
+        <td>${c.phone}</td>
+        <td>${c.trade}</td>
+        <td>${c.experience || ""}</td>
+        <td>${c.location || ""}</td>
+        <td>
+          <div class="status-cell">
+            ${badge(c.status, "candBadge-" + c.id)}
+            <select class="mini-btn status-select" onchange="setCandStatus('${c.id}', this.value)">
+              ${statusOptions(CAND_STATUSES, c.status)}
+            </select>
+          </div>
+        </td>
+        <td>${fmtDate(c.created_at)}</td>
+        <td>
+          <a class="mini-btn" href="candidate-detail.html?id=${c.id}">View Details</a>
+        </td>
+      </tr>`).join("") || emptyRow(9);
+  document.getElementById("candCount").textContent =
+    CAND_CAMPAIGN_FILTER ? rows.length + " of " + CANDIDATES.length : rows.length;
+  renderCandFilterNote();
   updateBulkBar("cand");
 }
 function renderCandidatesMini() {

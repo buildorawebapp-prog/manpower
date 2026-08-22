@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=15" />
+  <link rel="stylesheet" href="css/style.css?v=16" />
   <style>
     /* Dark theme styles */
     body.dark-theme {
@@ -547,6 +547,430 @@
     .mobile-menu-toggle {
       display: none;
     }
+
+    /* ============================================================
+       Chat Bubble / Widget — Floating FAB + Corner Panel / Full-screen
+       ============================================================ */
+    /* FAB button */
+    .chat-fab {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--saffron), var(--saffron-dark));
+      color: #2a1600;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: var(--shadow-lg);
+      z-index: 1100;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      animation: fabPopIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes fabPopIn {
+      from { opacity: 0; transform: scale(0.6) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .chat-fab:hover {
+      transform: scale(1.08);
+      box-shadow: 0 16px 40px rgba(255, 107, 53, 0.45);
+    }
+    .chat-fab:active { transform: scale(0.95); }
+    .chat-fab:focus-visible { outline: 3px solid rgba(255,107,53,0.4); outline-offset: 3px; }
+
+    .chat-fab .fab-icon { transition: transform 0.2s ease; }
+    .chat-fab.open .fab-icon { transform: rotate(45deg); }
+
+    /* Unread badge on FAB */
+    .chat-fab-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 6px;
+      background: #e53935;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(229,57,53,0.4);
+      transform: scale(0);
+      transform-origin: top right;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
+    .chat-fab-badge.show { transform: scale(1); }
+
+    /* Chat Widget — Desktop: corner panel; Mobile: full-screen */
+    .chat-widget {
+      position: fixed;
+      right: 24px;
+      bottom: 100px;
+      width: 380px;
+      max-width: calc(100vw - 32px);
+      max-height: 620px;
+      height: 620px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--line);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 1099;
+      opacity: 0;
+      transform: translateY(16px) scale(0.96);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .chat-widget.open {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* NOTE — the mobile (max-width:520px) overrides for the widget live at the
+       END of this stylesheet, after every base .chat-widget-* rule. Same-
+       specificity rules are resolved by source order, so a media block placed
+       here would be silently overridden by the base rules below. */
+
+    .chat-widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, #0b1b3a, #10254d);
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .chat-widget-header h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0;
+      /* style.css sets `h1, h2, h3 { color: var(--navy-900) }`, which beats the
+         inherited white from .chat-widget-header — the title was navy-on-navy. */
+      color: #fff;
+    }
+    .chat-widget-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      line-height: 1;
+      transition: background 0.2s;
+    }
+    .chat-widget-close:hover { background: rgba(255,255,255,0.2); }
+    .chat-widget-close:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
+
+    .chat-widget-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .chat-widget-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .chat-widget-input-area {
+      padding: 16px 20px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+      flex-shrink: 0;
+    }
+
+    .chat-widget-input-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .chat-widget-attach-btn,
+    .chat-widget-video-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--bg);
+      border: 2px solid var(--line);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .chat-widget-attach-btn:hover,
+    .chat-widget-video-btn:hover {
+      border-color: var(--saffron);
+      background: #fff;
+    }
+    .chat-widget-attach-btn:focus-visible,
+    .chat-widget-video-btn:focus-visible {
+      outline: 2px solid var(--saffron);
+      outline-offset: 2px;
+    }
+
+    .chat-widget-input {
+      flex: 1;
+      /* THE mobile bug: a flex item's automatic minimum size is its content
+         width, and a <textarea> has an intrinsic ~180px. Without min-width:0 the
+         row could not shrink, overflowed the panel, and pushed the send button
+         off the right edge of the screen. */
+      min-width: 0;
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.4;
+      resize: none;           /* height is managed by autoGrowChatWidget() */
+      min-height: 44px;
+      max-height: 120px;
+      background: var(--bg);
+      transition: border-color 0.2s;
+    }
+    .chat-widget-input:focus {
+      outline: none;
+      border-color: var(--saffron);
+    }
+
+    .chat-widget-send {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--saffron), var(--saffron-dark));
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 19px;
+      font-weight: 800;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.35);
+      transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+    .chat-widget-send:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(255, 107, 53, 0.45);
+    }
+    .chat-widget-send:active { transform: scale(0.94); }
+    .chat-widget-send:focus-visible { outline: 3px solid rgba(255,107,53,0.45); outline-offset: 2px; }
+    .chat-widget-send:disabled {
+      /* Still clearly visible — only dimmed. The whole complaint was that the
+         send button "disappeared", so an idle state must never read as missing. */
+      opacity: 0.55;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .chat-widget-attach-preview {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .chat-widget-attach-preview.hide { display: none; }
+    .chat-widget-attach-preview img { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; }
+    .chat-widget-attach-preview .ap-name { font-size: 12px; color: var(--ink); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-widget-attach-preview .ap-remove { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--muted); padding: 2px; line-height: 1; }
+    .chat-widget-attach-preview .ap-remove:hover { color: #e53935; }
+
+    /* Video compression progress for widget */
+    .chat-widget-attach-preview.video-working { flex-direction: column; align-items: stretch; gap: 6px; }
+    .chat-widget-attach-preview .vp-row { display: flex; align-items: center; gap: 10px; }
+    .chat-widget-attach-preview .vp-label { flex: 1; font-weight: 700; color: var(--navy-900); font-size: 13px; }
+    .chat-widget-attach-preview .vp-bar {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+    .chat-widget-attach-preview .vp-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--saffron);
+      border-radius: 999px;
+      transition: width 0.2s ease;
+    }
+    .chat-widget-attach-preview .vp-pct { flex: 0 0 auto; font-weight: 800; color: var(--navy-900); font-size: 13px; }
+    .chat-widget-attach-preview .vp-cancel {
+      flex: 0 0 auto;
+      border: 1px solid rgba(180, 35, 24, 0.3);
+      background: #fee4e2;
+      color: #b42318;
+      font-size: 12px;
+      font-weight: 800;
+      border-radius: 999px;
+      padding: 4px 12px;
+      cursor: pointer;
+      line-height: 1.4;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .chat-widget-attach-preview .vp-cancel:hover { background: #d92d20; color: #fff; border-color: #d92d20; }
+    body.dark-theme .chat-widget-attach-preview .vp-label,
+    body.dark-theme .chat-widget-attach-preview .vp-pct { color: #e8eaed; }
+    body.dark-theme .chat-widget-attach-preview .vp-bar { background: rgba(255,255,255,0.12); }
+    body.dark-theme .chat-widget-attach-preview .vp-cancel {
+      background: #3d1a18;
+      border-color: rgba(217, 45, 32, 0.4);
+      color: #ff8a6b;
+    }
+    body.dark-theme .chat-widget-attach-preview .vp-cancel:hover {
+      background: #d92d20;
+      color: #fff;
+      border-color: #d92d20;
+    }
+
+    /* Dark theme for chat widget */
+    body.dark-theme .chat-widget {
+      background: #161d2b;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-widget-messages {
+      background: #0f131c;
+    }
+    body.dark-theme .chat-widget-input-area {
+      background: #161d2b;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-widget-attach-btn,
+    body.dark-theme .chat-widget-video-btn {
+      background: #1e2636;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-widget-attach-btn:hover,
+    body.dark-theme .chat-widget-video-btn:hover {
+      background: #252d3e;
+      border-color: var(--saffron);
+    }
+    body.dark-theme .chat-widget-input {
+      background: #1e2636;
+      border-color: #252d3e;
+      color: #e8eaed;
+    }
+    body.dark-theme .chat-widget-attach-preview {
+      background: #1e2636;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-widget-attach-preview .ap-name { color: #e8eaed; }
+    body.dark-theme .chat-widget-attach-preview .ap-remove:hover { color: #ff6b6b; }
+
+    /* Reuse existing chat-message/bubble styles but ensure they work inside widget */
+    .chat-widget-messages .chat-message { animation: slideIn 0.3s ease; }
+    .chat-widget-messages .chat-bubble {
+      max-width: 75%;
+      box-shadow: var(--shadow-sm);
+    }
+    .chat-widget-messages .chat-message.user .chat-bubble {
+      background: var(--amber-100);
+      border-color: rgba(255, 138, 30, 0.2);
+    }
+    body.dark-theme .chat-widget-messages .chat-message.user .chat-bubble {
+      background: #1e2636;
+      border-color: #252d3e;
+    }
+    body.dark-theme .chat-widget-messages .chat-message.admin .chat-bubble {
+      background: rgba(255, 138, 30, 0.15);
+      border-color: rgba(255, 138, 30, 0.3);
+    }
+
+    /* FAB tooltip (optional, subtle) */
+    .chat-fab-tooltip {
+      position: absolute;
+      right: 72px;
+      bottom: 50%;
+      transform: translateY(50%);
+      background: var(--navy-900);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .chat-fab:hover .chat-fab-tooltip { opacity: 1; }
+
+    /* ============================================================
+       MOBILE (phone) OVERRIDES — must stay LAST in this stylesheet.
+       Every rule here targets a single class, exactly like the base
+       rules above, so it only wins by being later in source order.
+       ============================================================ */
+    @media (max-width: 520px) {
+      .chat-fab-tooltip { display: none; }
+
+      /* Full-screen chat panel */
+      .chat-widget {
+        right: 0;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        border: none;
+      }
+      /* Dynamic viewport height: the panel shrinks when Android's on-screen
+         keyboard opens instead of pushing the composer below the fold.
+         syncChatWidgetViewport() in JS refines this further via visualViewport. */
+      @supports (height: 100dvh) {
+        .chat-widget { height: 100dvh; max-height: 100dvh; }
+      }
+
+      .chat-fab { right: 16px; bottom: 16px; }
+      /* The full-screen panel has its own ✕ in the header, so the floating
+         bubble is just clutter here — and it sat directly on top of the send
+         button. Hidden while the chat is open (body.chat-open). */
+      body.chat-open .chat-fab { display: none; }
+
+      .chat-widget-messages { padding: 16px 14px; }
+
+      /* Composer: two icon buttons + textarea + send must all fit on a 320px
+         screen, and clear Android's gesture bar (safe-area inset). */
+      .chat-widget-input-area {
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+      }
+      .chat-widget-input-row { gap: 6px; }
+      .chat-widget-attach-btn,
+      .chat-widget-video-btn { width: 42px; height: 42px; font-size: 17px; }
+      /* 16px keeps Android/iOS from zooming the page on focus. */
+      .chat-widget-input { font-size: 16px; min-height: 42px; padding: 10px 12px; }
+      .chat-widget-send { width: 46px; height: 46px; font-size: 18px; }
+    }
+
   </style>
 </head>
 <body>
@@ -557,6 +981,37 @@
 
   <!-- Mobile Overlay -->
   <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+
+  <!-- Chat FAB (always visible) -->
+  <button class="chat-fab" id="chatFab" onclick="toggleChatWidget()" aria-label="Chat with us" title="Chat with us">
+    <span class="fab-icon">💬</span>
+    <span class="chat-fab-tooltip">Chat with us</span>
+    <span class="chat-fab-badge" id="chatFabBadge">0</span>
+  </button>
+
+  <!-- Chat Widget (panel on desktop, full-screen on mobile) -->
+  <div class="chat-widget" id="chatWidget" role="dialog" aria-label="Chat with Admin" aria-modal="true">
+    <div class="chat-widget-header">
+      <h3>💬 Chat with Admin</h3>
+      <button class="chat-widget-close" onclick="closeChatWidget()" aria-label="Close chat">✕</button>
+    </div>
+    <div class="chat-widget-messages" id="chatWidgetMessages">
+      <div class="chat-widget-empty">💬 Select an application to start chatting</div>
+    </div>
+    <div class="chat-widget-input-area">
+      <div class="chat-widget-attach-preview hide" id="chatWidgetAttachPreview"></div>
+      <div class="chat-widget-input-row">
+        <input type="file" id="chatWidgetFileInput" accept="image/*,application/pdf" style="display:none" onchange="handleChatWidgetFileSelect(this)" />
+        <input type="file" id="chatWidgetVideoInput" accept="video/*" style="display:none" onchange="handleChatWidgetVideoSelect(this)" />
+        <button type="button" class="chat-widget-attach-btn" onclick="document.getElementById('chatWidgetFileInput').click()" title="Attach image or PDF" aria-label="Attach file">📎</button>
+        <button type="button" id="chatWidgetVideoBtn" class="chat-widget-video-btn" onclick="document.getElementById('chatWidgetVideoInput').click()" title="Record / upload a 40-second intro video" aria-label="Intro video">🎥</button>
+        <textarea id="chatWidgetInput" class="chat-widget-input" rows="1" placeholder="Type a message..."
+                  enterkeyhint="send" aria-label="Message"
+                  oninput="autoGrowChatWidget(this)" onkeydown="chatWidgetKeydown(event)"></textarea>
+        <button id="chatWidgetSendBtn" class="chat-widget-send" onclick="sendChatWidgetMessage()" title="Send" aria-label="Send" disabled>➤</button>
+      </div>
+    </div>
+  </div>
 
   <div class="user-dashboard-shell">
     <!-- Sidebar -->
@@ -640,14 +1095,23 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js?v=3"></script>
   <script src="js/chat-attachments.js?v=4"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/app.js?v=4"></script>
   <script>
     let currentUserId = null;
     let currentUserEmail = null;
     let submissions = [];
     let selectedSubmission = null;
-    let chatSelectedFile = null;
     let forcedPasswordChange = false;
+
+    // Chat widget state
+    let chatWidgetOpen = false;
+    let chatWidgetSubmissionId = null;   // submission_id the widget is currently showing
+    let chatWidgetSubmissionType = null; // 'candidate' or 'employer'
+    let chatLastMessageCount = {};       // per submission: { key: count }
+    let chatWidgetSelectedFile = null;
+    let chatWidgetVideoProcessing = false;
+    let chatWidgetUploadControls = null;
+    let chatPollTimer = null;            // single 10s chat refresh timer
 
     // Check login on load
     window.addEventListener('DOMContentLoaded', async () => {
@@ -686,21 +1150,24 @@
       const client = initSupabase();
       if (!client) return;
 
+      // Only the NETWORK call is inside this try. Rendering used to sit here too,
+      // so any UI bug surfaced as a misleading "Could not load your applications"
+      // alert even though the data had arrived fine.
+      let rows = [];
       try {
         const { data, error } = await client.rpc('get_user_submissions', {
           p_user_id: currentUserId
         });
-
-        console.log('Submissions loaded:', { data, error });
-
         if (error) throw error;
-
-        submissions = data || [];
-        renderSubmissions();
+        rows = data || [];
       } catch (err) {
         console.error('Error loading submissions:', err);
         alert('Could not load your applications');
+        return;
       }
+
+      submissions = rows;
+      renderSubmissions();
     }
 
     function renderSubmissions() {
@@ -751,6 +1218,18 @@
         ? el.closest('.submission-item')
         : document.querySelector(`.submission-item[data-id="${id}"]`);
       if (activeItem) activeItem.classList.add('active');
+
+      // Point the floating chat widget at the application now on screen. We only
+      // retarget it here — loadSubmissionDetails() below fetches the thread once
+      // and renders it into the widget, so the chat is never fetched twice per
+      // click. (This sync used to live in a wrapper function further down the
+      // file; see the note there for why that pattern was removed.)
+      chatWidgetSubmissionId = selectedSubmission.submission_id;
+      chatWidgetSubmissionType = selectedSubmission.submission_type;
+      if (chatWidgetOpen) {
+        const box = document.getElementById('chatWidgetMessages');
+        if (box) box.innerHTML = '<div class="chat-widget-empty">Loading…</div>';
+      }
 
       await loadSubmissionDetails(selectedSubmission);
     }
@@ -894,28 +1373,7 @@
         `;
       }
 
-      main.innerHTML = detailsHTML + `
-        <div class="chat-section">
-          <div class="chat-header">
-            <h3>💬 Chat with Admin</h3>
-          </div>
-          <div class="chat-messages" id="chatMessages">
-            <div class="chat-empty">Loading messages...</div>
-          </div>
-          <div class="chat-input-area">
-            <div id="attachPreview" class="attach-preview hide"></div>
-            <div class="chat-input-row">
-              <input type="file" id="chatFileInput" accept="image/*,application/pdf" style="display:none" onchange="handleChatFileSelect(this)" />
-              <input type="file" id="chatVideoInput" accept="video/*" style="display:none" onchange="handleChatVideoSelect(this)" />
-              <button type="button" class="chat-attach-btn" onclick="document.getElementById('chatFileInput').click()" title="Attach image or PDF" aria-label="Attach file">📎</button>
-              <button type="button" id="videoBtn" class="chat-video-btn" onclick="document.getElementById('chatVideoInput').click()" title="Record / upload a 40-second intro video" aria-label="Intro video">🎥</button>
-              <textarea id="chatInput" class="chat-input" rows="1" placeholder="Type a message..." oninput="autoGrowChat(this)"></textarea>
-              <button id="sendBtn" class="chat-send-btn" onclick="sendMessage()" title="Send" aria-label="Send">➤</button>
-            </div>
-          </div>
-        </div>
-      `;
-      chatSelectedFile = null;
+      main.innerHTML = detailsHTML;
     }
 
     async function loadChat(type, id) {
@@ -931,10 +1389,37 @@
 
         if (error) throw error;
 
-        displayChat(data || []);
+        const messages = data || [];
 
-        // Auto-refresh every 10s
-        setTimeout(() => {
+        // Update unread badge ONLY for the currently selected submission
+        // (per user requirement: "unread badge scope = selected application only")
+        const key = `${type}:${id}`;
+        const prevCount = chatLastMessageCount[key] || 0;
+        const adminMessages = messages.filter(m => m.sender_type === 'admin');
+        const newAdminCount = adminMessages.length;
+
+        if (newAdminCount > prevCount) {
+          chatLastMessageCount[key] = newAdminCount;
+          // Only show badge if this is the currently selected submission
+          // AND widget is closed (or user isn't viewing this submission in widget)
+          const isSelectedSubmission = selectedSubmission && selectedSubmission.submission_id === id;
+          if (isSelectedSubmission && (!chatWidgetOpen || chatWidgetSubmissionId !== id)) {
+            incrementChatBadge(newAdminCount - prevCount);
+          }
+        }
+
+        // If widget is open AND showing this submission, render there
+        if (chatWidgetOpen && chatWidgetSubmissionId === id) {
+          displayChatWidget(messages);
+        }
+
+        // Auto-refresh every 10s. Exactly ONE polling chain is kept alive: two
+        // callers (application detail load + the chat widget) can ask for the
+        // same chat, and switching applications must not leave the old timer
+        // running — otherwise the timers multiply on every click.
+        if (chatPollTimer) clearTimeout(chatPollTimer);
+        chatPollTimer = setTimeout(() => {
+          chatPollTimer = null;
           if (selectedSubmission && selectedSubmission.submission_id === id) {
             loadChat(type, id);
           }
@@ -944,12 +1429,12 @@
       }
     }
 
-    function displayChat(messages) {
-      const container = document.getElementById('chatMessages');
+    function displayChatWidget(messages) {
+      const container = document.getElementById('chatWidgetMessages');
       if (!container) return;
 
       if (messages.length === 0) {
-        container.innerHTML = '<div class="chat-empty">💬 No messages yet. Start a conversation!</div>';
+        container.innerHTML = '<div class="chat-widget-empty">💬 No messages yet. Start a conversation!</div>';
         return;
       }
 
@@ -972,39 +1457,181 @@
       container.scrollTop = container.scrollHeight;
     }
 
-    async function sendMessage() {
-      if (!selectedSubmission) return;
-      if (chatVideoProcessing) return; // wait for the video to finish compressing
+    /* The old INLINE chat (a fixed panel under the application details) was
+       replaced by the floating bubble widget below. Its helper functions
+       (sendMessage / handleChatFileSelect / showVideoProgress / autoGrowChat …)
+       were left behind pointing at DOM ids that no longer exist on this page
+       (#chatInput, #sendBtn, #attachPreview), so they have been removed. The
+       admin detail pages keep their own copies — those pages still have the
+       inline chat markup. */
 
-      const input = document.getElementById('chatInput');
+    /* ============================================================
+       Chat Widget Functions (Floating Bubble / Corner Panel)
+       ============================================================ */
+    function toggleChatWidget() {
+      chatWidgetOpen ? closeChatWidget() : openChatWidget();
+    }
+
+    function openChatWidget() {
+      const widget = document.getElementById('chatWidget');
+      const fab = document.getElementById('chatFab');
+      chatWidgetOpen = true;
+      widget.classList.add('open');
+      fab.classList.add('open');
+      // Hides the floating bubble on phones (CSS: body.chat-open .chat-fab) so it
+      // can't sit on top of the send button in the full-screen panel.
+      document.body.classList.add('chat-open');
+
+      updateChatBadge(0);                       // user is looking at it now
+      startChatViewportSync();                  // keep the composer above the keyboard
+      updateChatWidgetSendState();
+
+      if (selectedSubmission) {
+        openChatWidgetForSubmission(selectedSubmission);
+      }
+    }
+
+    function closeChatWidget() {
+      const widget = document.getElementById('chatWidget');
+      const fab = document.getElementById('chatFab');
+      chatWidgetOpen = false;
+      widget.classList.remove('open');
+      fab.classList.remove('open');
+      document.body.classList.remove('chat-open');
+      stopChatViewportSync();
+    }
+
+    /* ---- Keyboard-aware sizing (Android/iOS) ----------------------------------
+       A `position: fixed` element is laid out against the LAYOUT viewport, which
+       does not shrink when the on-screen keyboard appears — so the composer ends
+       up underneath the keyboard. visualViewport tells us the real visible box,
+       so we size the panel to it and lift it above the keyboard. Desktop and
+       browsers without visualViewport fall back to the CSS (100dvh / fixed
+       panel) untouched. */
+    function syncChatWidgetViewport() {
+      const widget = document.getElementById('chatWidget');
+      const vv = window.visualViewport;
+      if (!widget) return;
+
+      if (!vv || window.innerWidth > 520 || !chatWidgetOpen) {
+        widget.style.height = '';
+        widget.style.bottom = '';
+        return;
+      }
+      const keyboard = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      widget.style.height = vv.height + 'px';
+      widget.style.bottom = keyboard + 'px';
+    }
+
+    function startChatViewportSync() {
+      const vv = window.visualViewport;
+      syncChatWidgetViewport();
+      if (!vv || vv.__chatBound) return;
+      vv.addEventListener('resize', syncChatWidgetViewport);
+      vv.addEventListener('scroll', syncChatWidgetViewport);
+      vv.__chatBound = true;
+    }
+
+    function stopChatViewportSync() {
+      const widget = document.getElementById('chatWidget');
+      if (widget) { widget.style.height = ''; widget.style.bottom = ''; }
+    }
+
+    /* Send stays disabled until there is actually something to send, so the
+       button never looks broken when tapped. */
+    function updateChatWidgetSendState() {
+      const btn = document.getElementById('chatWidgetSendBtn');
+      const input = document.getElementById('chatWidgetInput');
+      if (!btn || !input) return;
+      if (chatWidgetVideoProcessing) { btn.disabled = true; return; }
+      btn.disabled = !(input.value.trim() || chatWidgetSelectedFile);
+    }
+
+    /* Desktop: Enter sends, Shift+Enter makes a new line. On phones Enter always
+       makes a new line — the on-screen keyboard has its own send affordance and
+       people expect Enter to be a line break there. */
+    function chatWidgetKeydown(e) {
+      if (e.key !== 'Enter' || e.shiftKey) return;
+      if (window.innerWidth <= 520) return;
+      e.preventDefault();
+      sendChatWidgetMessage();
+    }
+
+    function openChatWidgetForSubmission(sub) {
+      if (!sub) return;
+      chatWidgetSubmissionId = sub.submission_id;
+      chatWidgetSubmissionType = sub.submission_type;
+      const key = `${sub.submission_type}:${sub.submission_id}`;
+      // Reset unread count for this submission since user is viewing it
+      chatLastMessageCount[key] = (chatLastMessageCount[key] || 0);
+      // Load chat messages
+      loadChat(sub.submission_type, sub.submission_id);
+      // Scroll to bottom
+      setTimeout(() => {
+        const container = document.getElementById('chatWidgetMessages');
+        if (container) container.scrollTop = container.scrollHeight;
+      }, 50);
+    }
+
+    function incrementChatBadge(increment) {
+      const badge = document.getElementById('chatFabBadge');
+      if (!badge) return;
+      let current = parseInt(badge.textContent || '0', 10);
+      current += increment;
+      updateChatBadge(current);
+    }
+
+    function updateChatBadge(count) {
+      const badge = document.getElementById('chatFabBadge');
+      if (!badge) return;
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.classList.add('show');
+      } else {
+        badge.textContent = '0';
+        badge.classList.remove('show');
+      }
+    }
+
+    function autoGrowChatWidget(el) {
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+      updateChatWidgetSendState();
+    }
+
+    async function sendChatWidgetMessage() {
+      if (!chatWidgetSubmissionId || !chatWidgetSubmissionType) return;
+      if (chatWidgetVideoProcessing) return;
+
+      const input = document.getElementById('chatWidgetInput');
       const message = input.value.trim();
 
-      // Need at least text or an attachment
-      if (!message && !chatSelectedFile) return;
+      if (!message && !chatWidgetSelectedFile) return;
 
       const client = initSupabase();
-      const sendBtn = document.getElementById('sendBtn');
+      const sendBtn = document.getElementById('chatWidgetSendBtn');
       sendBtn.disabled = true;
 
       try {
         let attachment = null;
-        if (chatSelectedFile) {
+        if (chatWidgetSelectedFile) {
           sendBtn.textContent = '⏳';
-          const fileToSend = chatSelectedFile;
+          const fileToSend = chatWidgetSelectedFile;
           const isVideo = fileToSend.type && fileToSend.type.indexOf('video/') === 0;
-          chatUploadControls = {};
-          if (isVideo) showVideoProgress('Uploading…', 0);
+          chatWidgetUploadControls = {};
+          if (isVideo) showWidgetVideoProgress('Uploading…', 0);
           const uploader = (typeof uploadChatAttachmentWithProgress === 'function')
             ? uploadChatAttachmentWithProgress
             : (f) => uploadChatAttachment(f);
           attachment = await uploader(fileToSend, (p) => {
-            if (isVideo) showVideoProgress('Uploading…', p.percent);
-          }, chatUploadControls);
+            if (isVideo) showWidgetVideoProgress('Uploading…', p.percent);
+          }, chatWidgetUploadControls);
         }
 
         const { error } = await client.from('chat_messages').insert({
-          submission_type: selectedSubmission.submission_type,
-          submission_id: selectedSubmission.submission_id,
+          submission_type: chatWidgetSubmissionType,
+          submission_id: chatWidgetSubmissionId,
           sender_type: 'user',
           message: message || null,
           attachment_url: attachment ? attachment.url : null,
@@ -1015,41 +1642,41 @@
         if (error) throw error;
 
         input.value = '';
-        autoGrowChat(input);
-        clearChatAttachment();
-        await loadChat(selectedSubmission.submission_type, selectedSubmission.submission_id);
+        autoGrowChatWidget(input);
+        clearChatWidgetAttachment();
+        await loadChat(chatWidgetSubmissionType, chatWidgetSubmissionId);
       } catch (err) {
         if (err && err.message === '__CANCELLED__') {
-          clearChatAttachment();            // user pressed Stop — quiet clear
+          clearChatWidgetAttachment();
         } else {
           console.error('Error sending message:', err);
           alert(err.message || 'Could not send message');
         }
       } finally {
-        chatUploadControls = null;
-        sendBtn.disabled = false;
+        chatWidgetUploadControls = null;
         sendBtn.textContent = '➤';
+        updateChatWidgetSendState();
       }
     }
 
-    /* ---- Chat attachment helpers (user dashboard) ---- */
-    function handleChatFileSelect(input) {
+    /* ---- Chat Widget attachment helpers ---- */
+    function handleChatWidgetFileSelect(input) {
       const file = input.files && input.files[0];
-      if (!file) { clearChatAttachment(); return; }
+      if (!file) { clearChatWidgetAttachment(); return; }
 
       const check = (typeof validateChatFile === 'function')
         ? validateChatFile(file) : { ok: true, type: 'file' };
       if (!check.ok) {
         alert(check.error);
-        clearChatAttachment();
+        clearChatWidgetAttachment();
         return;
       }
-      chatSelectedFile = file;
-      showAttachPreview(file, check.type);
+      chatWidgetSelectedFile = file;
+      showChatWidgetAttachPreview(file, check.type);
     }
 
-    function showAttachPreview(file, type) {
-      const preview = document.getElementById('attachPreview');
+    function showChatWidgetAttachPreview(file, type) {
+      const preview = document.getElementById('chatWidgetAttachPreview');
       if (!preview) return;
       let thumb = '<span style="font-size:22px;">📄</span>';
       if (type === 'image') {
@@ -1059,75 +1686,79 @@
       preview.innerHTML = `
         ${thumb}
         <span class="ap-name">${escapeHtml(file.name)}</span>
-        <button type="button" class="ap-remove" onclick="clearChatAttachment()" title="Remove" aria-label="Remove attachment">✕</button>
+        <button type="button" class="ap-remove" onclick="clearChatWidgetAttachment()" title="Remove" aria-label="Remove attachment">✕</button>
       `;
       preview.classList.remove('hide');
+      updateChatWidgetSendState();
     }
 
-    function clearChatAttachment() {
-      chatSelectedFile = null;
-      const preview = document.getElementById('attachPreview');
-      if (preview) { preview.innerHTML = ''; preview.className = 'attach-preview hide'; }
-      const fileInput = document.getElementById('chatFileInput');
+    function clearChatWidgetAttachment() {
+      chatWidgetSelectedFile = null;
+      const preview = document.getElementById('chatWidgetAttachPreview');
+      if (preview) { preview.innerHTML = ''; preview.className = 'chat-widget-attach-preview hide'; }
+      const fileInput = document.getElementById('chatWidgetFileInput');
       if (fileInput) fileInput.value = '';
-      const videoInput = document.getElementById('chatVideoInput');
+      const videoInput = document.getElementById('chatWidgetVideoInput');
       if (videoInput) videoInput.value = '';
+      updateChatWidgetSendState();
     }
 
-    /* ---- Intro video: select → compress (with progress) → ready to send ---- */
-    let chatVideoProcessing = false;
-    let chatUploadControls = null; // set during an upload so Stop can abort it
-
-    /* Stop button: aborts an in-progress upload, or a running compression. */
-    function cancelChatUpload() {
-      if (chatUploadControls && typeof chatUploadControls.abort === 'function') {
-        chatUploadControls.abort();          // upload phase → abort the XHR
+    /* ---- Widget Intro video: select → compress (with progress) → ready to send ---- */
+    function cancelWidgetChatUpload() {
+      if (chatWidgetUploadControls && typeof chatWidgetUploadControls.abort === 'function') {
+        chatWidgetUploadControls.abort();
       } else if (typeof cancelVideoWork === 'function') {
-        cancelVideoWork();                   // compression phase → stop ffmpeg
+        cancelVideoWork();
       }
-      showVideoProgress('Stopping…', null);
+      showWidgetVideoProgress('Stopping…', null);
     }
 
-    function setChatBusy(busy) {
-      chatVideoProcessing = busy;
-      const ids = ['sendBtn', 'videoBtn'];
-      ids.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = busy; });
-      const attach = document.querySelector('.chat-attach-btn');
+    function setChatWidgetBusy(busy) {
+      chatWidgetVideoProcessing = busy;
+      const videoBtn = document.getElementById('chatWidgetVideoBtn');
+      if (videoBtn) videoBtn.disabled = busy;
+      const attach = document.querySelector('.chat-widget-attach-btn');
       if (attach) attach.disabled = busy;
+      /* Send is never toggled directly — updateChatWidgetSendState() owns it, so
+         it stays disabled while a video is processing AND while there is nothing
+         to send. Setting `.disabled = false` here used to re-enable an empty
+         composer's send button. */
+      updateChatWidgetSendState();
     }
 
-    function showVideoProgress(note, percent) {
-      const preview = document.getElementById('attachPreview');
+    function showWidgetVideoProgress(note, percent) {
+      const preview = document.getElementById('chatWidgetAttachPreview');
       if (!preview) return;
-      preview.className = 'attach-preview video-working';
+      preview.className = 'chat-widget-attach-preview video-working';
       const pct = (typeof percent === 'number') ? Math.round(percent) : null;
       preview.innerHTML =
         '<div class="vp-row">' +
           '<span class="vp-label">' + escapeHtml(note || 'Processing…') + '</span>' +
           (pct !== null ? '<span class="vp-pct">' + pct + '%</span>' : '') +
-          '<button type="button" class="vp-cancel" onclick="cancelChatUpload()" title="Stop">✕ Stop</button>' +
+          '<button type="button" class="vp-cancel" onclick="cancelWidgetChatUpload()" title="Stop">✕ Stop</button>' +
         '</div>' +
         '<div class="vp-bar"><div class="vp-fill" style="width:' + (pct !== null ? pct : 8) + '%"></div></div>';
       preview.classList.remove('hide');
     }
 
-    function showVideoReady(file, wasCompressed) {
-      const preview = document.getElementById('attachPreview');
+    function showWidgetVideoReady(file, wasCompressed) {
+      const preview = document.getElementById('chatWidgetAttachPreview');
       if (!preview) return;
-      preview.className = 'attach-preview';
+      preview.className = 'chat-widget-attach-preview';
       const sizeTxt = (file.size / (1024 * 1024)).toFixed(1) + 'MB';
       const tag = wasCompressed ? 'compressed' : 'ready';
       preview.innerHTML =
         '<span style="font-size:22px;">🎥</span>' +
         '<span class="ap-name">Intro video &middot; ' + sizeTxt + ' (' + tag + ')</span>' +
-        '<button type="button" class="ap-remove" onclick="clearChatAttachment()" title="Remove" aria-label="Remove video">✕</button>';
+        '<button type="button" class="ap-remove" onclick="clearChatWidgetAttachment()" title="Remove" aria-label="Remove video">✕</button>';
       preview.classList.remove('hide');
+      updateChatWidgetSendState();
     }
 
-    async function handleChatVideoSelect(input) {
+    async function handleChatWidgetVideoSelect(input) {
       const file = input.files && input.files[0];
       if (!file) return;
-      if (chatVideoProcessing) return;
+      if (chatWidgetVideoProcessing) return;
 
       if (typeof compressVideoIfNeeded !== 'function') {
         alert('Video feature is still loading. Please refresh and try again.');
@@ -1135,37 +1766,40 @@
         return;
       }
 
-      // Start fresh: drop any previously chosen attachment.
-      chatSelectedFile = null;
-      setChatBusy(true);
-      showVideoProgress('Checking video…', null);
+      chatWidgetSelectedFile = null;
+      setChatWidgetBusy(true);
+      showWidgetVideoProgress('Checking video…', null);
 
       try {
         const result = await compressVideoIfNeeded(file, (p) => {
-          if (p.phase === 'loading') showVideoProgress(p.note || 'Preparing video tools…', null);
-          else showVideoProgress(p.note || 'Compressing…', p.percent);
+          if (p.phase === 'loading') showWidgetVideoProgress(p.note || 'Preparing video tools…', null);
+          else showWidgetVideoProgress(p.note || 'Compressing…', p.percent);
         });
-        chatSelectedFile = result.file;
-        showVideoReady(result.file, result.compressed);
+        chatWidgetSelectedFile = result.file;
+        showWidgetVideoReady(result.file, result.compressed);
       } catch (err) {
         if (err && err.message === '__CANCELLED__') {
-          clearChatAttachment();            // user stopped — quiet clear
+          clearChatWidgetAttachment();
         } else {
           console.error('Video error:', err);
           alert(err.message || 'Could not process this video.');
-          clearChatAttachment();
+          clearChatWidgetAttachment();
         }
       } finally {
-        setChatBusy(false);
+        setChatWidgetBusy(false);
         input.value = '';
       }
     }
 
-    function autoGrowChat(el) {
-      if (!el) return;
-      el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 140) + 'px';
-    }
+    /* NOTE — do NOT re-add a "wrapper" around selectSubmission like this:
+         const _originalSelectSubmission = selectSubmission;
+         function selectSubmission(id, el) { _originalSelectSubmission(id, el); ... }
+       Both are function DECLARATIONS, so the second one is hoisted and replaces
+       the first before any code runs. `_originalSelectSubmission` therefore ends
+       up pointing at the wrapper itself → infinite recursion → RangeError, which
+       was being swallowed by loadSubmissions() and shown as
+       "Could not load your applications". The widget sync now lives inside
+       selectSubmission() itself. */
 
     function toggleTheme() {
       const isDark = document.body.classList.toggle('dark-theme');

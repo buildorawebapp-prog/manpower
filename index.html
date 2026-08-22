@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=15" />
+  <link rel="stylesheet" href="css/style.css?v=16" />
 </head>
 <body>
   <div id="header-slot"></div>
@@ -49,6 +49,21 @@
       <span><span class="dot">●</span> <span data-i18n="trust.4"></span></span>
     </div>
   </div>
+
+  <!-- LIVE HIRING CAMPAIGNS (hidden automatically when none are live) -->
+  <section class="section camp-strip" id="campStrip" style="display:none">
+    <div class="container">
+      <div class="camp-strip-head reveal">
+        <div>
+          <span class="eyebrow" data-i18n="camp.stripEyebrow"></span>
+          <h2 class="section-title" style="margin-bottom:6px" data-i18n="camp.stripTitle"></h2>
+          <p class="section-sub" style="margin:0" data-i18n="camp.stripSub"></p>
+        </div>
+        <a href="campaigns.html" class="btn btn-navy" data-i18n="camp.viewAll"></a>
+      </div>
+      <div class="camp-grid reveal" id="campStripGrid"></div>
+    </div>
+  </section>
 
   <!-- SERVICES / TRADES -->
   <section class="section" id="services">
@@ -137,8 +152,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js?v=3"></script>
-  <script src="js/i18n.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/config.js?v=1"></script>
+  <script src="js/i18n.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
+  <script src="js/campaigns.js?v=2"></script>
   <script>
     function renderTrades() {
       // Full trades grid — photo where available, else icon tile
@@ -168,9 +185,30 @@
       applyLang(getLang());
     }
 
+    /* Featured strip: up to 3 campaigns that are actually OPEN. If nothing is
+       open the whole section stays hidden, so the homepage never advertises a
+       shelf of "Positions filled" cards. Starred (featured) campaigns come
+       first, then the admin's sort order. */
+    async function renderCampaignStrip() {
+      const strip = document.getElementById("campStrip");
+      const grid  = document.getElementById("campStripGrid");
+      if (!strip || !grid) return;
+
+      const open = (await fetchCampaigns()).filter(campaignIsOpen);
+      if (!open.length) { strip.style.display = "none"; return; }
+
+      // fetchCampaigns() already sorts featured-first, then sort_order.
+      const list = open.slice(0, 3);
+
+      grid.innerHTML = list.map(campaignCardHTML).join("");
+      strip.style.display = "";
+      applyLang(getLang());
+      initReveal();
+    }
+
     initShell("index.html");
     renderTrades();
-    loadLiveData(renderTrades);
+    loadLiveData(() => { renderTrades(); renderCampaignStrip(); });
   </script>
 </body>
 </html>

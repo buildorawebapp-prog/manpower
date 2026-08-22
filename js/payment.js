@@ -53,6 +53,14 @@ async function submitBasicForm(event) {
     location: document.getElementById('location').value,
   };
 
+  // Applying through a hiring campaign? Attach it so the server can validate
+  // the seat and link the application. window.CAMPAIGN_CONTEXT is set by
+  // apply.html only after it has verified the campaign is live and has seats;
+  // create_payment_order() re-validates everything before any money is taken.
+  if (window.CAMPAIGN_CONTEXT && window.CAMPAIGN_CONTEXT.id) {
+    candidateData.campaign_id = window.CAMPAIGN_CONTEXT.id;
+  }
+
   // Validate
   if (!candidateData.full_name || !candidateData.phone || !candidateData.email) {
     alert('Please fill all required fields');
@@ -222,7 +230,14 @@ function handleFileSelect(input) {
 function displayReview() {
   const reviewData = document.getElementById('reviewData');
 
+  const campaignRow = (window.CAMPAIGN_CONTEXT && window.CAMPAIGN_CONTEXT.title)
+    ? `<div class="review-item">
+      <span class="review-label">📣 Campaign:</span>
+      <span class="review-value">${window.CAMPAIGN_CONTEXT.title}</span>
+    </div>` : '';
+
   reviewData.innerHTML = `
+    ${campaignRow}
     <div class="review-item">
       <span class="review-label">👤 Full Name:</span>
       <span class="review-value">${candidateData.full_name}</span>
@@ -298,6 +313,23 @@ async function proceedToPayment() {
         payBtn.textContent = 'Confirm & Proceed to Pay ₹200';
         return;
       }
+
+      // The campaign filled up / closed / expired between page load and payment.
+      // Nothing was charged. Detach the campaign, unlock the trade field and let
+      // the candidate continue as a normal application instead of dead-ending.
+      const campaignErr = /^CAMPAIGN_(MISSING|CLOSED|FULL|EXPIRED):\s*([\s\S]*)$/
+        .exec((orderResult && orderResult.error) || '');
+      if (campaignErr) {
+        if (typeof releaseCampaignContext === 'function') releaseCampaignContext();
+        delete candidateData.campaign_id;
+        displayReview();
+        alert('Campaign no longer available\n\n' + campaignErr[2] +
+              '\n\nYou have not been charged. Press the pay button again to continue as a normal application.');
+        payBtn.disabled = false;
+        payBtn.textContent = 'Confirm & Proceed to Pay ₹200';
+        return;
+      }
+
       throw new Error((orderResult && orderResult.error) || 'Failed to create payment order');
     }
 
@@ -342,8 +374,20 @@ async function proceedToPayment() {
     };
 
     const rzp = new Razorpay(options);
+    // A payment attempt was declined at the gateway (wrong/invalid card, bank or
+    // issuer decline, wallet/gateway outage, or timeout). This is a normal
+    // gateway outcome — NOT an app error. Show the customer what happened and
+    // what to try next, and reassure them about auto-refund of any debit.
     rzp.on('payment.failed', function(response) {
-      alert('Payment failed: ' + response.error.description);
+      const err = (response && response.error) || {};
+      const reason = err.description || 'The payment could not be completed.';
+      let advice = 'Please try again using UPI, a different card, or net banking.';
+      if (err.source === 'issuer' || err.source === 'gateway' || err.reason === 'server_error') {
+        advice += ' If any amount was debited, your bank will refund it within 5–7 working days.';
+      }
+      const ref = (err.metadata && err.metadata.payment_id)
+        ? ('\n\nReference: ' + err.metadata.payment_id) : '';
+      alert('Payment not completed\n\n' + reason + '\n\n' + advice + ref);
       payBtn.disabled = false;
       payBtn.textContent = 'Retry Payment';
     });

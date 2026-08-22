@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=15" />
+  <link rel="stylesheet" href="css/style.css?v=16" />
   <style>
     /* Payment Form Specific Styles */
     .step-indicator {
@@ -254,6 +254,9 @@
     <div class="container form-wrap">
       <div class="form-card">
 
+        <!-- Campaign banner (only when arriving from campaigns.html) -->
+        <div id="campBannerSlot"></div>
+
         <!-- Step Indicator -->
         <div class="step-indicator">
           <div class="step active" data-step="1">
@@ -303,6 +306,7 @@
               <div class="field">
                 <label>Trade/Skill <span class="req">*</span></label>
                 <select id="trade" required></select>
+                <span class="locked-hint" id="tradeLockHint" style="display:none"></span>
               </div>
               <div class="field">
                 <label>Gender <span class="req">*</span></label>
@@ -410,11 +414,123 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js?v=3"></script>
   <script src="js/config.js?v=1"></script>
-  <script src="js/i18n.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/i18n.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
+  <script src="js/campaigns.js?v=2"></script>
   <script src="js/phone-input.js?v=2"></script>
-  <script src="js/payment.js?v=5"></script>
+  <script src="js/payment.js?v=7"></script>
   <script>
+    /* ==================================================================
+       CAMPAIGN DEEP LINK  —  apply.html?campaign=<uuid>&trade=<name>
+       The `trade` query param is only a cosmetic hint; the trade that
+       actually gets locked in comes from the campaign row in the database,
+       and create_payment_order() overrides it server-side anyway. So a
+       tampered URL can't book a Fitters seat as a Welder.
+    ================================================================== */
+    let CAMPAIGN_CTX = null;          // verified, open campaign (or null)
+    window.CAMPAIGN_CONTEXT = null;   // what payment.js reads
+
+    function campaignParamId() {
+      return (new URLSearchParams(location.search).get('campaign') || '').trim();
+    }
+
+    function findTradeOption(name) {
+      const sel = document.getElementById('trade');
+      const want = String(name || '').trim().toLowerCase();
+      if (!sel || !want) return null;
+      return Array.from(sel.options)
+        .find(o => o.value.trim().toLowerCase() === want) || null;
+    }
+
+    /* Re-applied at the end of fillFormDropdowns(), because that function runs
+       twice (fallback trades, then live trades) and the second run would
+       otherwise wipe the pre-selection. */
+    function reapplyCampaignTrade() {
+      const sel  = document.getElementById('trade');
+      const hint = document.getElementById('tradeLockHint');
+      if (!sel) return;
+
+      if (!CAMPAIGN_CTX) {
+        sel.disabled = false;
+        sel.classList.remove('is-locked');
+        if (hint) hint.style.display = 'none';
+        return;
+      }
+      const opt = findTradeOption(CAMPAIGN_CTX.trade);
+      if (!opt) return;                        // handled by initCampaignContext
+      sel.value = opt.value;
+      sel.disabled = true;                     // value is still read by JS
+      sel.classList.add('is-locked');
+      if (hint) {
+        hint.textContent = '🔒 ' + t('camp.tradeLocked');
+        hint.style.display = '';
+      }
+    }
+
+    function renderCampaignBanner(c) {
+      const slot = document.getElementById('campBannerSlot');
+      if (!slot) return;
+      const s = campaignSeats(c);
+      const seatsTxt = s.available === 1
+        ? s.available + ' ' + t('camp.seatLeft')
+        : s.available + ' ' + t('camp.seatsLeft');
+      slot.innerHTML = `
+        <div class="camp-banner">
+          <div class="cb-ico">📣</div>
+          <div class="cb-body">
+            <div class="cb-label">${escapeHtml(t('camp.applyingVia'))}</div>
+            <div class="cb-title">${escapeHtml(c.title)}</div>
+            <div class="cb-sub">${campaignTradeIcon(c.trade)} ${escapeHtml(c.trade)}${
+              c.location ? ' · 📍 ' + escapeHtml(c.location) : ''
+            } · <b>${escapeHtml(seatsTxt)}</b></div>
+          </div>
+        </div>`;
+    }
+
+    /* Campaign is dead (missing / full / closed / expired / trade renamed).
+       We never dead-end the user: the banner explains it and the form carries
+       on as a normal application with the trade unlocked. */
+    function renderCampaignWarn() {
+      const slot = document.getElementById('campBannerSlot');
+      if (!slot) return;
+      slot.innerHTML = `
+        <div class="camp-banner warn">
+          <div class="cb-ico">⚠️</div>
+          <div class="cb-body">
+            <div class="cb-label">${escapeHtml(t('camp.goneT'))}</div>
+            <div class="cb-sub">${escapeHtml(t('camp.goneP'))}</div>
+          </div>
+        </div>`;
+    }
+
+    /* Called by payment.js if the last seat went while the user was filling
+       the form — drops the link and unlocks the trade. */
+    function releaseCampaignContext() {
+      CAMPAIGN_CTX = null;
+      window.CAMPAIGN_CONTEXT = null;
+      reapplyCampaignTrade();
+      renderCampaignWarn();
+    }
+
+    async function initCampaignContext() {
+      const id = campaignParamId();
+      if (!id) return;                                   // normal application
+
+      const c = await fetchCampaignById(id);
+      if (!c || !campaignIsOpen(c) || !findTradeOption(c.trade)) {
+        CAMPAIGN_CTX = null;
+        window.CAMPAIGN_CONTEXT = null;
+        renderCampaignWarn();
+        reapplyCampaignTrade();
+        return;
+      }
+
+      CAMPAIGN_CTX = c;
+      window.CAMPAIGN_CONTEXT = { id: c.id, trade: c.trade, title: c.title };
+      renderCampaignBanner(c);
+      reapplyCampaignTrade();
+    }
+
     // Fill dropdowns on page load
     function fillFormDropdowns() {
       const tradeSelect = document.getElementById('trade');
@@ -441,6 +557,9 @@
           PhoneInput.initPhoneField(pc, document.getElementById('phone'), 'IN');
         }
       }
+
+      // Rebuilding the trade list clears any campaign pre-selection — restore it.
+      reapplyCampaignTrade();
     }
 
     // File input drag & drop
@@ -468,8 +587,13 @@
 
     // Initialize
     fillFormDropdowns();
-    loadLiveData(fillFormDropdowns);
     initShell("apply.html");
+    // Live trades load first so the campaign's trade is guaranteed to exist in
+    // the dropdown before we try to pre-select and lock it.
+    loadLiveData(() => {
+      fillFormDropdowns();
+      initCampaignContext();
+    });
   </script>
 </body>
 </html>
