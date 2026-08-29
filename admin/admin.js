@@ -10,7 +10,10 @@ let CANDIDATES = [];
 let EMPLOYERS = [];
 let ADMIN_LOCATIONS = [];   // [{id, name}]
 let ADMIN_TRADES = [];      // [{id, name}]
-let ADMIN_SETTINGS = { phone: "", whatsapp: "", email: "", company: "", address: "" };
+/* Keys here are written straight to the settings table (Object.entries →
+   upsert), so a property name IS the DB key. phone_proc1 / phone_proc2 are
+   read by js/app.js to fill the Procurement Coordinator contact cards. */
+let ADMIN_SETTINGS = { phone: "", whatsapp: "", email: "", company: "", address: "", phone_proc1: "", phone_proc2: "" };
 
 /* When set to a campaign id, the Candidates table shows only that campaign's
    applicants. Driven by the "👥 Applicants" button in the Campaigns view. */
@@ -88,6 +91,7 @@ async function loadAll() {
   ADMIN_SETTINGS = {
     phone: map.phone || "", whatsapp: map.whatsapp || "",
     email: map.email || "", company: map.company || "", address: map.address || "",
+    phone_proc1: map.phone_proc1 || "", phone_proc2: map.phone_proc2 || "",
   };
 
   renderStats();
@@ -463,6 +467,8 @@ function loadSettings() {
   document.getElementById("setEmail").value = ADMIN_SETTINGS.email;
   document.getElementById("setCompany").value = ADMIN_SETTINGS.company;
   document.getElementById("setAddress").value = ADMIN_SETTINGS.address;
+  document.getElementById("setPhoneProc1").value = ADMIN_SETTINGS.phone_proc1;
+  document.getElementById("setPhoneProc2").value = ADMIN_SETTINGS.phone_proc2;
 }
 async function saveSettings() {
   ADMIN_SETTINGS = {
@@ -471,6 +477,8 @@ async function saveSettings() {
     email: document.getElementById("setEmail").value,
     company: document.getElementById("setCompany").value,
     address: document.getElementById("setAddress").value,
+    phone_proc1: document.getElementById("setPhoneProc1").value.trim(),
+    phone_proc2: document.getElementById("setPhoneProc2").value.trim(),
   };
   const rows = Object.entries(ADMIN_SETTINGS).map(([key, value]) => ({ key, value }));
   const { error } = await client.from("settings").upsert(rows);

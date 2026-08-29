@@ -14,11 +14,50 @@
    keep the site working offline.
 ---------------------------------------------------------------------- */
 let DEMO_CONTACT = {
-  phone: "+91 98765 43210",
-  whatsapp: "+91 98765 43210",
+  phone: "+91 70523 77101",
+  whatsapp: "+91 70523 77101",
   company: "Go Hire Consultancy",
   email: "hello@gohireconsultancy.com",
 };
+
+/* Social profiles. Kept here (not in the DB) because these are brand-level and
+   change roughly never — the footer renders whatever is listed, so adding a
+   channel later is one entry. `path` is the icon's SVG path data, inlined so the
+   footer needs no icon font and no extra network request. */
+const SOCIAL_LINKS = [
+  {
+    key: "ig", label: "Instagram",
+    url: "https://www.instagram.com/gohireconsultancy/",
+    path: "M12 2.2c3.2 0 3.6 0 4.9.07 1.2.06 1.8.25 2.2.42.6.23 1 .5 1.5.95.45.45.72.9.95 1.5.17.4.36 1 .42 2.2.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.2-.25 1.8-.42 2.2-.23.6-.5 1-.95 1.5-.45.45-.9.72-1.5.95-.4.17-1 .36-2.2.42-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.2-.06-1.8-.25-2.2-.42-.6-.23-1-.5-1.5-.95-.45-.45-.72-.9-.95-1.5-.17-.4-.36-1-.42-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.2.25-1.8.42-2.2.23-.6.5-1 .95-1.5.45-.45.9-.72 1.5-.95.4-.17 1-.36 2.2-.42C8.4 2.2 8.8 2.2 12 2.2zm0 1.98c-3.14 0-3.5.01-4.73.07-.94.04-1.4.2-1.72.32-.36.14-.6.3-.87.57-.27.27-.43.5-.57.87-.13.33-.28.78-.32 1.72-.06 1.23-.07 1.6-.07 4.73s.01 3.5.07 4.73c.04.94.2 1.4.32 1.72.14.36.3.6.57.87.27.27.5.43.87.57.33.13.78.28 1.72.32 1.23.06 1.6.07 4.73.07s3.5-.01 4.73-.07c.94-.04 1.4-.2 1.72-.32.36-.14.6-.3.87-.57.27-.27.43-.5.57-.87.13-.33.28-.78.32-1.72.06-1.23.07-1.6.07-4.73s-.01-3.5-.07-4.73c-.04-.94-.2-1.4-.32-1.72a2.35 2.35 0 0 0-.57-.87 2.35 2.35 0 0 0-.87-.57c-.33-.13-.78-.28-1.72-.32-1.23-.06-1.6-.07-4.73-.07zm0 3.37a4.45 4.45 0 1 1 0 8.9 4.45 4.45 0 0 1 0-8.9zm0 7.34a2.89 2.89 0 1 0 0-5.78 2.89 2.89 0 0 0 0 5.78zm5.66-7.52a1.04 1.04 0 1 1-2.08 0 1.04 1.04 0 0 1 2.08 0z"
+  },
+  {
+    key: "fb", label: "Facebook",
+    url: "https://www.facebook.com/profile.php?id=61593844348276",
+    path: "M13.5 21.9v-8.7h2.95l.44-3.42H13.5V7.6c0-.99.27-1.66 1.69-1.66h1.8V2.88c-.31-.04-1.38-.13-2.63-.13-2.6 0-4.38 1.59-4.38 4.5v2.51H7.02v3.42h2.96v8.7h3.52z"
+  },
+  {
+    key: "x", label: "X (Twitter)",
+    url: "https://x.com/gohireconsult",
+    path: "M17.53 3h3.2l-6.99 7.99L21.9 21h-6.3l-4.6-6.02L5.6 21H2.4l7.3-8.34L2.1 3h6.45l4.3 5.68L17.53 3zm-1.12 16.06h1.77L6.68 4.85H4.78l11.63 14.21z"
+  },
+  {
+    key: "yt", label: "YouTube",
+    url: "https://www.youtube.com/channel/UCtG7XcDqbpB8Tbj8d1u84bw",
+    path: "M21.58 7.19a2.78 2.78 0 0 0-1.96-1.96C17.88 4.75 12 4.75 12 4.75s-5.88 0-7.62.48A2.78 2.78 0 0 0 2.42 7.2C1.95 8.93 1.95 12 1.95 12s0 3.07.47 4.81a2.78 2.78 0 0 0 1.96 1.96c1.74.48 7.62.48 7.62.48s5.88 0 7.62-.48a2.78 2.78 0 0 0 1.96-1.96c.47-1.74.47-4.81.47-4.81s0-3.07-.47-4.81zM10.1 15.35V8.65L15.9 12l-5.8 3.35z"
+  },
+];
+
+/* Role-tagged contact people.
+   The HR Manager row has `phone: null` on purpose — it resolves to
+   DEMO_CONTACT.phone, which the admin panel already owns (settings.phone), so
+   the big Call/WhatsApp buttons and this card can never drift apart. The two
+   procurement numbers get their own settings keys (phone_proc1 / phone_proc2)
+   with the values below as offline fallbacks. */
+let CONTACT_TEAM = [
+  { key: "hr",    roleKey: "contact.role.hr",   icon: "🧑‍💼", phone: null },
+  { key: "proc1", roleKey: "contact.role.proc", icon: "📋", phone: "+91 76519 99067" },
+  { key: "proc2", roleKey: "contact.role.proc", icon: "📋", phone: "+91 96046 13811" },
+];
 
 // icon + i18n-friendly names. `name` shown as-is (proper nouns / trades).
 let DEMO_TRADES = [
@@ -98,6 +137,14 @@ async function loadLiveData(onReady) {
         email: map.email || DEMO_CONTACT.email,
         address: map.address || "Al Quoz Third Block - B Office 311, Dubai, UAE",
       };
+      /* Procurement numbers are editable from the admin Contact Settings too.
+         Only overwrite when the key exists AND is non-empty, so a DB that was
+         never given these keys keeps the bundled fallbacks instead of blanking
+         the cards. */
+      CONTACT_TEAM = CONTACT_TEAM.map((p) => {
+        const val = (map["phone_" + p.key] || "").trim();
+        return val ? { ...p, phone: val } : p;
+      });
     }
   } catch (err) {
     console.warn("Live data load failed, using fallback:", err);
@@ -137,6 +184,9 @@ function applyLang(code) {
   document.querySelectorAll(".lang-menu button").forEach((b) => {
     b.classList.toggle("active", b.dataset.code === code);
   });
+  /* The role tags on the contact cards are translated at render time, not via
+     data-i18n, so they have to be rebuilt when the language changes. */
+  renderContactTeam();
 }
 
 /* ----------------------------------------------------------------------
@@ -168,9 +218,8 @@ function buildHeader(active) {
   return `
   <header class="site-header">
     <div class="container nav">
-      <a href="index.html" class="brand">
-        <span class="brand-logo"></span>
-        <span>Go Hire Consultancy<small data-i18n="brand.tag"></small></span>
+      <a href="index.html" class="brand brand-lockup" aria-label="Go Hire Consultancy — Bridging Talent, Building Futures">
+        <img src="images/full-logo.png" alt="Go Hire Consultancy" class="brand-full" width="900" height="294" />
       </a>
       <nav class="nav-links" id="navLinks">${navLinks}
         <a href="hire.html" class="btn btn-primary" style="margin-left:8px;padding:9px 18px" data-i18n="nav.hire"></a>${loginBtn}
@@ -197,16 +246,20 @@ function buildFooter() {
     ? `${addr.line1 || ''}${addr.line2 ? '<br/>' + addr.line2 : ''}${addr.city ? '<br/>' + addr.city + ', ' + (addr.state || '') + ' - ' + (addr.pincode || '') : ''}`
     : addr;
 
+  /* The footer sits on navy and the logo artwork is navy-on-transparent, so it
+     would vanish there. It gets a white rounded plate instead of a second,
+     inverted image file — one asset, always legible. */
   return `
   <footer class="site-footer">
     <div class="container">
       <div class="footer-grid">
         <div class="footer-brand">
-          <a href="index.html" class="brand" style="color:#fff">
-            <span class="brand-logo"></span>
-            <span>Go Hire Consultancy</span>
+          <a href="index.html" class="brand brand-lockup" aria-label="Go Hire Consultancy">
+            <img src="images/full-logo.png" alt="Go Hire Consultancy" class="brand-full on-plate" width="900" height="294" />
           </a>
           <p data-i18n="footer.about"></p>
+          <h5 class="social-head" data-i18n="footer.follow"></h5>
+          <div class="footer-social">${buildSocialLinks()}</div>
         </div>
         <div>
           <h5 data-i18n="footer.company"></h5>
@@ -222,10 +275,9 @@ function buildFooter() {
           <a href="hire.html" data-i18n="nav.hire"></a>
         </div>
         <div>
-          <h5 data-i18n="footer.getstarted"></h5>
-          <a href="apply.html" data-i18n="split.worker.b"></a>
-          <a href="hire.html" data-i18n="split.employer.b"></a>
-          <a id="footCall" href="#"></a>
+          <h5 data-i18n="footer.talk"></h5>
+          <div class="contact-team" data-contact-team></div>
+          <a class="foot-mail" id="footMail" href="#"></a>
           <div style="margin-top:16px;">
             <h5 style="margin-bottom:12px;">📍 Address</h5>
             <p style="color:rgba(255,255,255,0.8); font-size:14px; line-height:1.6;">${addressHTML}</p>
@@ -237,6 +289,15 @@ function buildFooter() {
       </div>
     </div>
   </footer>`;
+}
+
+/* Social icon row — used in the footer, safe to drop anywhere else. */
+function buildSocialLinks() {
+  return SOCIAL_LINKS.map((s) => `
+    <a href="${s.url}" class="is-${s.key}" target="_blank" rel="noopener noreferrer"
+       title="${s.label}" aria-label="${s.label}">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${s.path}"/></svg>
+    </a>`).join("");
 }
 
 function toggleNav() { document.getElementById("navLinks").classList.toggle("mobile-open"); }
@@ -262,19 +323,90 @@ function initReveal() {
 }
 
 /* ----------------------------------------------------------------------
-   Contact wiring (phone / whatsapp)  — DEMO for now
+   Contact wiring (phone / whatsapp / role-tagged team cards)
 ---------------------------------------------------------------------- */
+
+/* Private to this file — js/campaigns.js also defines a global escapeHtml(),
+   and app.js loads on pages that don't include campaigns.js, so it can't rely
+   on it (and must not re-declare it). */
+function contactSafe(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+const telDigits = (p) => String(p || "").replace(/[^0-9+]/g, "");
+const waDigits  = (p) => String(p || "").replace(/[^0-9]/g, "");
+const WA_TEXT = "Hi Go Hire Consultancy, I'd like to know more.";
+const waLink = (p) => "https://wa.me/" + waDigits(p) + "?text=" + encodeURIComponent(WA_TEXT);
+
+/* One house style for every number on the site: +91 XXXXX XXXXX. The three
+   numbers arrive written three different ways (DB value, and two the way they
+   were handed to us), and a footer showing three formats looks careless.
+   Anything that isn't a 10-digit Indian mobile is left exactly as given. */
+function formatPhone(raw) {
+  const s = String(raw || "").trim();
+  const d = s.replace(/[^0-9]/g, "");
+  if (/^91[6-9]\d{9}$/.test(d)) return "+91 " + d.slice(2, 7) + " " + d.slice(7);
+  if (/^[6-9]\d{9}$/.test(d) && !s.startsWith("+")) return "+91 " + d.slice(0, 5) + " " + d.slice(5);
+  return s;
+}
+
+/* Groups CONTACT_TEAM by role so "Procurement Coordinator" is one card with two
+   numbers rather than the same tag printed twice. */
+function contactTeamGroups() {
+  const groups = [];
+  CONTACT_TEAM.forEach((p) => {
+    const phone = (p.phone || DEMO_CONTACT.phone || "").trim();
+    if (!phone) return;
+    let g = groups.find((x) => x.roleKey === p.roleKey);
+    if (!g) { g = { roleKey: p.roleKey, icon: p.icon, phones: [] }; groups.push(g); }
+    if (!g.phones.some((x) => waDigits(x) === waDigits(phone))) g.phones.push(phone);
+  });
+  return groups;
+}
+
+const WA_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.04 2C6.6 2 2.2 6.4 2.2 11.84c0 1.74.46 3.44 1.32 4.93L2 22l5.35-1.4a9.8 9.8 0 0 0 4.69 1.2h.01c5.43 0 9.84-4.4 9.84-9.84A9.78 9.78 0 0 0 12.04 2zm0 17.96h-.01a8.15 8.15 0 0 1-4.15-1.14l-.3-.18-3.08.81.82-3.01-.19-.31a8.13 8.13 0 0 1-1.25-4.34c0-4.51 3.67-8.18 8.18-8.18a8.14 8.14 0 0 1 8.16 8.19c0 4.51-3.67 8.16-8.18 8.16zm4.49-6.11c-.25-.12-1.47-.72-1.7-.8-.23-.09-.4-.13-.56.12-.17.25-.66.8-.81.97-.15.17-.3.19-.55.06a6.66 6.66 0 0 1-1.96-1.21 7.4 7.4 0 0 1-1.36-1.69c-.14-.25-.02-.38.11-.51.11-.11.25-.3.37-.45.12-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.12-.55-1.34-.76-1.83-.2-.48-.4-.42-.55-.42h-.47c-.16 0-.42.06-.64.31-.22.25-.84.82-.84 2 0 1.18.86 2.32.98 2.48.12.17 1.7 2.6 4.11 3.64.57.25 1.02.4 1.37.51.58.18 1.1.16 1.52.1.46-.07 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.47-.28z"/></svg>';
+
+function renderContactTeam() {
+  const nodes = document.querySelectorAll("[data-contact-team]");
+  if (!nodes.length) return;
+  const html = contactTeamGroups().map((g) => {
+    const role = t(g.roleKey);
+    const lines = g.phones.map((ph) => {
+      const shown = formatPhone(ph);
+      return `<div class="tcard-line">
+          <a class="tcard-num" href="tel:${contactSafe(telDigits(ph))}">${contactSafe(shown)}</a>
+          <a class="tcard-wa" href="${contactSafe(waLink(ph))}" target="_blank" rel="noopener noreferrer"
+             title="WhatsApp ${contactSafe(shown)}"
+             aria-label="WhatsApp ${contactSafe(role)} ${contactSafe(shown)}">${WA_ICON}</a>
+        </div>`;
+    }).join("");
+    return `<div class="tcard">
+        <span class="tcard-role"><span class="tcard-ico" aria-hidden="true">${g.icon || "📞"}</span>${contactSafe(role)}</span>
+        ${lines}
+      </div>`;
+  }).join("");
+  nodes.forEach((el) => { el.innerHTML = html; });
+}
+
 function wireContact() {
-  const tel = DEMO_CONTACT.phone.replace(/[^0-9+]/g, "");
-  const wa = DEMO_CONTACT.whatsapp.replace(/[^0-9]/g, "");
+  const tel = telDigits(DEMO_CONTACT.phone);
   document.querySelectorAll("[data-call]").forEach((a) => { a.href = "tel:" + tel; });
   document.querySelectorAll("[data-whatsapp]").forEach((a) => {
-    a.href = "https://wa.me/" + wa + "?text=" + encodeURIComponent("Hi Go Hire Consultancy, I'd like to know more.");
+    a.href = waLink(DEMO_CONTACT.whatsapp);
     a.target = "_blank"; a.rel = "noopener";
   });
-  document.querySelectorAll("[data-phone-text]").forEach((el) => { el.textContent = DEMO_CONTACT.phone; });
+  document.querySelectorAll("[data-phone-text]").forEach((el) => { el.textContent = formatPhone(DEMO_CONTACT.phone); });
+  /* Kept for any page that still has the old single-number footer link. */
   const fc = document.getElementById("footCall");
-  if (fc) { fc.href = "tel:" + tel; fc.textContent = DEMO_CONTACT.phone; }
+  if (fc) { fc.href = "tel:" + tel; fc.textContent = formatPhone(DEMO_CONTACT.phone); }
+  const fm = document.getElementById("footMail");
+  if (fm && DEMO_CONTACT.email) {
+    fm.href = "mailto:" + DEMO_CONTACT.email;
+    fm.textContent = "✉️ " + DEMO_CONTACT.email;
+  }
+  renderContactTeam();
 }
 
 /* ----------------------------------------------------------------------

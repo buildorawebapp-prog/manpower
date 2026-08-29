@@ -86,6 +86,8 @@ h1, h2, h3 { line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; color
 }
 .nav { display: flex; align-items: center; justify-content: space-between; height: 72px; }
 .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 20px; color: var(--navy-900); }
+/* Square mark + typed name. Still used by the admin panel headers, which keep
+   their own "Admin" tagline next to the logo. */
 .brand-logo {
   width: 50px; height: 50px; flex-shrink: 0;
   background-image: url('../images/logo.png');
@@ -95,6 +97,30 @@ h1, h2, h3 { line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; color
 }
 /* Header logo — enlarged so the full branding reads clearly, still fitted inside the 72px nav */
 .nav .brand-logo { width: 60px; height: 60px; }
+
+/* ---- Full logo lockup (public site header + footer) ----
+   images/full-logo.png already contains the wordmark and the tagline, so the
+   brand link has no text next to it — hence the aria-label on the <a> and the
+   alt on the <img>, which is the only thing a screen reader has to go on.
+   Sized by height only; width follows the 900x294 intrinsic ratio. The file is
+   trimmed to the artwork, so the height below is all ink — 48px inside the 72px
+   nav leaves even clearance without the logo touching the header border. */
+.brand-lockup { gap: 0; }
+/* flex-shrink:0 matters: the height is fixed, so letting the flex row squeeze
+   the width would distort the wordmark instead of just making it smaller. */
+.brand-full { display: block; height: 48px; width: auto; flex: 0 0 auto; object-fit: contain; }
+/* Inside the footer, `.footer-grid a` (0,1,1) forces display:block + padding on
+   every link, including the brand one — two classes to win it back. */
+.footer-brand .brand-lockup { display: inline-flex; padding: 0; }
+/* Navy artwork on a navy footer would disappear, so it sits on a white plate
+   there rather than shipping a second, inverted image file. */
+.brand-full.on-plate {
+  height: 42px;
+  background: #fff;
+  padding: 10px 14px;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.22);
+}
 .brand small { display: block; font-size: 11px; font-weight: 600; color: var(--saffron-dark); letter-spacing: .12em; text-transform: uppercase; }
 .nav-links { display: flex; align-items: center; gap: 4px; }
 .nav-links a {
@@ -531,12 +557,76 @@ h1, h2, h3 { line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; color
 .btn-whatsapp:hover { background: #1eb857; }
 
 .site-footer { background: var(--navy-900); color: #b6c3dc; padding: 60px 0 28px; margin-top: 0; }
-.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
+.footer-grid { display: grid; grid-template-columns: 1.3fr .85fr .85fr 1.2fr; gap: 32px; }
 .footer-grid h5 { color: #fff; font-size: 15px; margin-bottom: 14px; text-transform: uppercase; letter-spacing: .06em; }
 .footer-grid a { display: block; padding: 5px 0; color: #b6c3dc; font-size: 14px; }
 .footer-grid a:hover { color: var(--saffron); }
 .footer-brand p { font-size: 14px; margin-top: 14px; color: #94a4c2; max-width: 260px; }
 .footer-bottom { border-top: 1px solid rgba(255,255,255,.1); margin-top: 40px; padding-top: 20px; text-align: center; font-size: 13px; color: #7e8eac; }
+
+/* ==========================================================================
+   Social links + role-tagged contact cards
+   MUST stay after the .footer-grid rules above: `.footer-grid a` is
+   (0,1,1) specificity, so anything targeting a single class inside the footer
+   would lose to it no matter the order. Every rule below that has to beat it
+   is written with two classes — e.g. `.contact-team .tcard-num` (0,2,0) —
+   which outranks (0,1,1) on class count. Order still matters for the rest.
+   ========================================================================== */
+.social-head { margin-top: 22px; }
+.footer-social { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.footer-social a {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; padding: 0; border-radius: 12px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.16);
+  color: #dbe4f5;
+  transition: transform .15s ease, background .2s ease, border-color .2s ease, color .2s ease;
+}
+.footer-social svg { width: 19px; height: 19px; display: block; fill: currentColor; }
+.footer-social a:hover { transform: translateY(-2px); color: #fff; border-color: transparent; }
+/* Each channel lights up in its own colour on hover — recognisable without
+   labels, and quiet until you reach for it. */
+.footer-social a.is-ig:hover { background: linear-gradient(45deg, #f09433, #dc2743 55%, #bc1888); }
+.footer-social a.is-fb:hover { background: #1877f2; }
+.footer-social a.is-x:hover  { background: #000; border-color: rgba(255,255,255,.4); }
+.footer-social a.is-yt:hover { background: #ff0000; }
+
+.contact-team { display: grid; gap: 10px; }
+.contact-team .tcard {
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 14px; padding: 11px 13px 12px;
+}
+.contact-team .tcard-role {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--saffron); line-height: 1.35;
+}
+.contact-team .tcard-ico { font-size: 13px; }
+.contact-team .tcard-line { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.contact-team .tcard-num {
+  display: inline-block; padding: 0; flex: 1 1 auto; min-width: 0;
+  font-size: 15px; font-weight: 800; color: #fff; letter-spacing: .3px;
+  font-variant-numeric: tabular-nums;
+}
+.contact-team .tcard-num:hover { color: var(--saffron); }
+.contact-team .tcard-wa {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0; flex: 0 0 auto; border-radius: 10px;
+  background: rgba(37,211,102,.16); border: 1px solid rgba(37,211,102,.4);
+  color: #25d366; transition: background .2s ease, color .2s ease, transform .15s ease;
+}
+.contact-team .tcard-wa svg { width: 17px; height: 17px; display: block; fill: currentColor; }
+.contact-team .tcard-wa:hover { background: #25d366; color: #062b12; transform: translateY(-1px); }
+.foot-mail { margin-top: 12px; font-weight: 600; word-break: break-all; }
+
+/* Same cards under the dark CTA band — laid out in a row there, and centred
+   with the rest of the band. */
+.contact-team.inline {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+  margin: 22px auto 0; text-align: left;
+}
+.contact-team.inline .tcard { min-width: 232px; background: rgba(255,255,255,.08); }
 
 /* ---- Forms ---- */
 .form-wrap { max-width: 760px; margin: 0 auto; }
@@ -1118,6 +1208,15 @@ h1, h2, h3 { line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; color
   #langCurrent { display: none; }
   .lang-btn { padding: 9px 11px; gap: 4px; }
   .nav-right { gap: 6px; }
+  /* The full logo is a wide image, so on a phone it competes with the language
+     switcher and the hamburger — shrink it rather than let the nav wrap. */
+  .brand-full { height: 38px; }
+  .brand-full.on-plate { height: 36px; padding: 9px 12px; }
+  /* One column: a contact card plus its WhatsApp button does not fit in half a
+     phone screen without the number clipping. */
+  .footer-grid { grid-template-columns: 1fr; gap: 26px; }
+  .footer-brand p { max-width: none; }
+  .contact-team.inline .tcard { min-width: 0; width: 100%; }
 }
 
 /* ==========================================================================
