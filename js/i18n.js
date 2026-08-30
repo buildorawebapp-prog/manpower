@@ -61,7 +61,7 @@ const I18N = {
     "footer.about": "Go Hire Consultancy We connect skilled and semi-skilled workers from around the world with trusted employers and the right international job opportunities.",
     "footer.company": "Company", "footer.services": "Services", "footer.getstarted": "Get Started",
     "footer.talk": "Talk to Our Team", "footer.follow": "Follow Us",
-    "contact.role.hr": "HR Manager", "contact.role.proc": "Procurement Coordinator",
+    "contact.role.hr": "HR Manager", "contact.role.proc": "Recruitment Coordinator",
     "footer.rights": "All rights reserved.",
 
     // apply page
@@ -210,7 +210,7 @@ const I18N = {
     "footer.about": "Go Hire Consultancy दुनिया भर के कुशल और अर्ध-कुशल कामगारों को विश्वसनीय नियोक्ताओं और सही अंतरराष्ट्रीय नौकरी के अवसरों से जोड़ता है।",
     "footer.company": "कंपनी", "footer.services": "सेवाएँ", "footer.getstarted": "शुरू करें",
     "footer.talk": "हमारी टीम से बात करें", "footer.follow": "हमें फ़ॉलो करें",
-    "contact.role.hr": "एचआर मैनेजर", "contact.role.proc": "प्रोक्योरमेंट कोऑर्डिनेटर",
+    "contact.role.hr": "एचआर मैनेजर", "contact.role.proc": "रिक्रूटमेंट कोऑर्डिनेटर",
     "footer.rights": "सर्वाधिकार सुरक्षित।",
 
     "apply.title": "काम के लिए आवेदन", "apply.sub": "यह फॉर्म भरें, हमारी टीम उपयुक्त काम के लिए आपसे संपर्क करेगी।",
@@ -341,7 +341,7 @@ const I18N = {
     "footer.about": "Go Hire Consultancy সারা বিশ্বের দক্ষ ও অর্ধ-দক্ষ কর্মীদের বিশ্বস্ত নিয়োগকর্তা এবং সঠিক আন্তর্জাতিক চাকরির সুযোগের সঙ্গে সংযুক্ত করে।",
     "footer.company": "কোম্পানি", "footer.services": "সেবা", "footer.getstarted": "শুরু করুন",
     "footer.talk": "আমাদের টিমের সঙ্গে কথা বলুন", "footer.follow": "আমাদের ফলো করুন",
-    "contact.role.hr": "এইচআর ম্যানেজার", "contact.role.proc": "প্রকিউরমেন্ট কোঅর্ডিনেটর",
+    "contact.role.hr": "এইচআর ম্যানেজার", "contact.role.proc": "নিয়োগ কোঅর্ডিনেটর",
     "footer.rights": "সর্বস্বত্ব সংরক্ষিত।",
 
     "apply.title": "কাজের আবেদন", "apply.sub": "এই ফর্ম পূরণ করুন, আমাদের দল উপযুক্ত কাজের জন্য যোগাযোগ করবে।",
@@ -445,7 +445,7 @@ const I18N = {
     "footer.about": "Go Hire Consultancy உலகம் முழுவதும் உள்ள திறமையான மற்றும் அரைத் திறமையான தொழிலாளர்களை நம்பகமான நிறுவனங்கள் மற்றும் சரியான சர்வதேச வேலை வாய்ப்புகளுடன் இணைக்கிறது.",
     "footer.company": "நிறுவனம்", "footer.services": "சேவைகள்", "footer.getstarted": "தொடங்குங்கள்",
     "footer.talk": "எங்கள் குழுவுடன் பேசுங்கள்", "footer.follow": "எங்களைப் பின்தொடருங்கள்",
-    "contact.role.hr": "மனிதவள மேலாளர்", "contact.role.proc": "கொள்முதல் ஒருங்கிணைப்பாளர்",
+    "contact.role.hr": "மனிதவள மேலாளர்", "contact.role.proc": "ஆட்சேர்ப்பு ஒருங்கிணைப்பாளர்",
     "footer.rights": "அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
 
     "apply.title": "வேலைக்கு விண்ணப்பம்", "apply.sub": "இந்த படிவத்தை நிரப்புங்கள், எங்கள் குழு பொருத்தமான வேலைக்கு தொடர்பு கொள்ளும்.",
@@ -549,7 +549,7 @@ const I18N = {
     "footer.about": "Go Hire Consultancy ప్రపంచవ్యాప్తంగా ఉన్న నైపుణ్యం కలిగిన మరియు అర్ధ-నైపుణ్యం కలిగిన కార్మికులను విశ్వసనీయమైన సంస్థలు మరియు సరైన అంతర్జాతీయ ఉద్యోగ అవకాశాలతో అనుసంధానిస్తుంది.",
     "footer.company": "కంపెనీ", "footer.services": "సేవలు", "footer.getstarted": "ప్రారంభించండి",
     "footer.talk": "మా టీమ్‌తో మాట్లాడండి", "footer.follow": "మమ్మల్ని ఫాలో అవ్వండి",
-    "contact.role.hr": "హెచ్‌ఆర్ మేనేజర్", "contact.role.proc": "ప్రొక్యూర్‌మెంట్ కోఆర్డినేటర్",
+    "contact.role.hr": "హెచ్‌ఆర్ మేనేజర్", "contact.role.proc": "రిక్రూట్‌మెంట్ కోఆర్డినేటర్",
     "footer.rights": "అన్ని హక్కులు రిజర్వ్డ్.",
 
     "apply.title": "పనికి దరఖాస్తు", "apply.sub": "ఈ ఫారం నింపండి, మా బృందం తగిన పని కోసం సంప్రదిస్తుంది.",
@@ -653,7 +653,7 @@ const I18N = {
     "footer.about": "Go Hire Consultancy जगभरातील कुशल आणि अर्ध-कुशल कामगारांना विश्वासार्ह नियोक्ते आणि योग्य आंतरराष्ट्रीय नोकरीच्या संधींशी जोडते.",
     "footer.company": "कंपनी", "footer.services": "सेवा", "footer.getstarted": "सुरू करा",
     "footer.talk": "आमच्या टीमशी बोला", "footer.follow": "आम्हाला फॉलो करा",
-    "contact.role.hr": "एचआर मॅनेजर", "contact.role.proc": "प्रोक्योरमेंट कोऑर्डिनेटर",
+    "contact.role.hr": "एचआर मॅनेजर", "contact.role.proc": "रिक्रूटमेंट कोऑर्डिनेटर",
     "footer.rights": "सर्व हक्क राखीव.",
 
     "apply.title": "कामासाठी अर्ज", "apply.sub": "हा फॉर्म भरा, आमची टीम योग्य कामासाठी संपर्क करेल.",

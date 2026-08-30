@@ -51,7 +51,7 @@ const SOCIAL_LINKS = [
    The HR Manager row has `phone: null` on purpose — it resolves to
    DEMO_CONTACT.phone, which the admin panel already owns (settings.phone), so
    the big Call/WhatsApp buttons and this card can never drift apart. The two
-   procurement numbers get their own settings keys (phone_proc1 / phone_proc2)
+   Recruitment numbers get their own settings keys (phone_proc1 / phone_proc2)
    with the values below as offline fallbacks. */
 let CONTACT_TEAM = [
   { key: "hr",    roleKey: "contact.role.hr",   icon: "🧑‍💼", phone: null },
@@ -137,7 +137,7 @@ async function loadLiveData(onReady) {
         email: map.email || DEMO_CONTACT.email,
         address: map.address || "Al Quoz Third Block - B Office 311, Dubai, UAE",
       };
-      /* Procurement numbers are editable from the admin Contact Settings too.
+      /* Recruitment numbers are editable from the admin Contact Settings too.
          Only overwrite when the key exists AND is non-empty, so a DB that was
          never given these keys keeps the bundled fallbacks instead of blanking
          the cards. */
@@ -352,7 +352,7 @@ function formatPhone(raw) {
   return s;
 }
 
-/* Groups CONTACT_TEAM by role so "Procurement Coordinator" is one card with two
+/* Groups CONTACT_TEAM by role so "Recruitment Coordinator" is one card with two
    numbers rather than the same tag printed twice. */
 function contactTeamGroups() {
   const groups = [];
