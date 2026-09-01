@@ -104,8 +104,9 @@ Deno.serve(async (req: Request) => {
       }
       return json({ success: false, error: m || "Failed to save application." }, 500);
     }
-    // create_payment_order returns { receipt_id, amount, candidate_id, currency }
-    // on success, or { success:false, error } if its internal handler fired.
+    // create_payment_order returns { receipt_id, amount, base_paise,
+    // surcharge_paise, candidate_id, currency } on success, or
+    // { success:false, error } if its internal handler fired.
     if (!created || created.success === false || !created.candidate_id) {
       const m = created && created.error ? String(created.error) : "Failed to save application.";
       if (m.indexOf("ROLE_CONFLICT") !== -1) {
@@ -116,18 +117,39 @@ Deno.serve(async (req: Request) => {
 
     const candidateId: string = created.candidate_id;
     const receiptId: string = created.receipt_id;
-    const amount: number = typeof created.amount === "number" ? created.amount : 20000;
+    const amount: number = typeof created.amount === "number" ? created.amount : NaN;
+    const basePaise: number | null =
+      typeof created.base_paise === "number" ? created.base_paise : null;
+    const surchargePaise: number | null =
+      typeof created.surcharge_paise === "number" ? created.surcharge_paise : null;
+
+    // The server RPC (create_payment_order → resolve_application_fee) is the
+    // ONLY authority for the amount. If it didn't return a sane integer paise
+    // value, refuse to open Checkout — NEVER fall back to a hardcoded price,
+    // that would silently mis-charge. (Razorpay floor is 100 paise = ₹1.)
+    if (!Number.isInteger(amount) || amount < 100) {
+      return json(
+        { success: false, error: "Server did not return a valid fee for this application. Please retry." },
+        500,
+      );
+    }
 
     // ---- 3) Create a REAL Razorpay order ------------------------------------
+    // amount is server-decided paise; the gateway charges THIS order's amount,
+    // so the number shown in the browser is cosmetic and cannot be tampered.
     const auth = "Basic " + btoa(`${KEY_ID}:${KEY_SECRET}`);
     const orderResp = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
       headers: { Authorization: auth, "Content-Type": "application/json" },
       body: JSON.stringify({
-        amount, // paise (20000 = ₹200)
+        amount, // server-resolved paise (location base + trade surcharge)
         currency: "INR",
         receipt: receiptId,
-        notes: { candidate_id: candidateId },
+        notes: {
+          candidate_id: candidateId,
+          base_paise: basePaise,
+          surcharge_paise: surchargePaise,
+        },
       }),
     });
     const order = await orderResp.json().catch(() => null);
@@ -159,6 +181,8 @@ Deno.serve(async (req: Request) => {
       success: true,
       order_id: order.id,
       amount,
+      base_paise: basePaise,
+      surcharge_paise: surchargePaise,
       currency: "INR",
       candidate_id: candidateId,
       key_id: KEY_ID,

@@ -8,6 +8,44 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/style.css?v=18" />
+  <style>
+    /* -- Pricing panel (inlined here so a new admin feature does NOT force a
+          cache-bust of the shared style.css across the whole public site) -- */
+    .price-intro{color:var(--muted);margin-bottom:18px;max-width:760px;line-height:1.55}
+    .price-sub{font-weight:600;font-size:13px;color:var(--muted)}
+    .price-calc{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;background:var(--amber-100);border:1px solid var(--line);border-radius:14px;padding:18px}
+    .price-calc .field{margin:0;min-width:200px}
+    .price-calc .field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px;color:var(--ink)}
+    .price-calc select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff}
+    .price-calc-out{margin-left:auto;text-align:right;min-width:170px}
+    .price-calc-out .lab{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+    .price-calc-out b{font-size:30px;font-weight:800;color:var(--ink);line-height:1.1}
+    .price-calc-out small{display:block;color:var(--muted);font-size:12.5px;margin-top:4px}
+    .price-grid{display:flex;flex-direction:column;gap:10px;max-width:640px}
+    .price-row{display:flex;align-items:center;gap:12px}
+    .price-name{flex:1;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+    .price-off{font-weight:600;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:6px}
+    .price-input{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;padding:0 10px;background:#fff}
+    .price-input .rupee{color:var(--muted);font-weight:700;margin-right:2px}
+    .price-input input{width:104px;border:0;outline:0;padding:10px 4px;font:inherit;background:transparent;text-align:right}
+    .price-input input::-webkit-outer-spin-button,.price-input input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+    .price-save{padding:9px 16px}
+    .price-save:disabled{opacity:.45;cursor:default}
+    .price-note{font-weight:700;font-size:13px;min-width:110px}
+    .price-audit{display:flex;flex-direction:column;gap:8px;max-width:840px}
+    .price-audit-row{display:grid;grid-template-columns:160px 1fr auto 150px;gap:12px;align-items:center;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13.5px}
+    .pa-when{color:var(--muted);font-size:12.5px}
+    .pa-what{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+    .pa-change{font-weight:700}
+    .pa-up{color:#b26a00}
+    .pa-down{color:var(--green)}
+    .pa-who{color:var(--muted);font-size:12.5px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    @media(max-width:720px){
+      .price-calc-out{margin-left:0;text-align:left}
+      .price-audit-row{grid-template-columns:1fr;gap:2px}
+      .pa-who,.pa-change{text-align:left}
+    }
+  </style>
 </head>
 <body class="admin-body">
   <div class="admin-shell">
@@ -23,6 +61,7 @@
         <a data-view="emp" data-title="Employer Requests" onclick="showView('emp', this)">🏢 Employers</a>
         <a data-view="loc" data-title="Locations" onclick="showView('loc', this)">📍 Locations</a>
         <a data-view="trade" data-title="Trades" onclick="showView('trade', this)">🛠️ Trades</a>
+        <a data-view="pricing" data-title="Application Fee Pricing" onclick="showView('pricing', this)">💰 Pricing</a>
         <a data-view="camp" data-title="Hiring Campaigns" onclick="showView('camp', this)">📣 Campaigns</a>
         <a data-view="set" data-title="Contact Settings" onclick="showView('set', this)">⚙️ Settings</a>
         <a href="#" onclick="logout();return false" style="margin-top:20px;color:#ff9d9d">↩ Logout</a>
@@ -146,6 +185,59 @@
       </section>
       <input id="changePhotoFile" type="file" accept="image/*" class="hide" onchange="onChangePhoto(this)" />
 
+      <!-- PRICING -->
+      <section id="view-pricing" class="adm-view hide">
+        <div class="panel">
+          <div class="panel-head"><h3>💰 Application Fee</h3></div>
+          <div style="padding:22px">
+            <p class="price-intro">
+              Every applicant pays a <strong>location base fee</strong>. If their trade has an optional
+              <strong>“+” surcharge</strong>, it is added on top — so the fee is
+              <strong>location&nbsp;base&nbsp;+&nbsp;trade&nbsp;surcharge</strong>. Leave a trade at ₹0 and only the
+              location fee applies. Changes take effect immediately for <em>new</em> applications only —
+              anyone who already paid is never affected.
+            </p>
+
+            <div class="price-calc">
+              <div class="field">
+                <label>Location</label>
+                <select id="calcLoc" onchange="renderPriceCalc()"></select>
+              </div>
+              <div class="field">
+                <label>Trade (optional)</label>
+                <select id="calcTrade" onchange="renderPriceCalc()"></select>
+              </div>
+              <div class="price-calc-out">
+                <span class="lab">Applicant pays</span>
+                <b id="calcTotal">—</b>
+                <small id="calcBreak">Pick a location to preview the fee.</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:22px">
+          <div class="panel-head"><h3>📍 Location base fee <span class="price-sub">— everyone applying for this location pays this</span></h3></div>
+          <div style="padding:22px">
+            <div class="price-grid" id="locPriceRows"></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:22px">
+          <div class="panel-head"><h3>🛠️ Trade surcharge <span class="price-sub">— optional “+” added on top of the location fee (₹0 = none)</span></h3></div>
+          <div style="padding:22px">
+            <div class="price-grid" id="tradePriceRows"></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:22px">
+          <div class="panel-head"><h3>🧾 Recent price changes</h3></div>
+          <div style="padding:22px">
+            <div class="price-audit" id="feeAuditList"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- CAMPAIGNS -->
       <section id="view-camp" class="adm-view hide">
         <div class="panel">
@@ -167,11 +259,12 @@
           <div style="padding:22px">
             <p style="color:var(--muted);margin-bottom:6px">
               Active campaigns show on the public <strong>Campaigns</strong> page and on the homepage strip.
-              Workers who click <em>Apply</em> land on the normal ₹200 application form with the trade already locked in.
+              Workers who click <em>Apply</em> land on the normal application form with the trade already locked in.
+              Their fee is set by the campaign's location (see the 💰 Pricing tab).
             </p>
             <p style="color:var(--muted);font-size:13px;margin-bottom:18px">
               <strong>Display total</strong> is the big number shown to the public. <strong>Real seats</strong> is what actually
-              counts down — it drops by one on every successful ₹200 payment, and the campaign flips to <em>Filled</em> at zero.
+              counts down — it drops by one on every successful payment, and the campaign flips to <em>Filled</em> at zero.
             </p>
             <span id="campNote" class="hide" style="display:block;font-weight:700;margin-bottom:14px"></span>
             <div class="cadm-grid" id="campCards"></div>
@@ -190,8 +283,8 @@
               <div class="field"><label>WhatsApp Number</label><input id="setWhatsapp" /></div>
               <div class="field"><label>Email</label><input id="setEmail" /></div>
               <div class="field"><label>Company Name</label><input id="setCompany" /></div>
-              <div class="field"><label>Procurement Coordinator 1</label><input id="setPhoneProc1" placeholder="+91 76519 99067" /></div>
-              <div class="field"><label>Procurement Coordinator 2</label><input id="setPhoneProc2" placeholder="+91 96046 13811" /></div>
+              <div class="field"><label>Recruitment Coordinator 1</label><input id="setPhoneProc1" placeholder="+91 76519 99067" /></div>
+              <div class="field"><label>Recruitment Coordinator 2</label><input id="setPhoneProc2" placeholder="+91 96046 13811" /></div>
             </div>
             <div class="field"><label>Address</label><input id="setAddress" /></div>
             <div style="display:flex;align-items:center;gap:14px;margin-top:10px">
@@ -229,8 +322,8 @@
           </div>
           <div class="field">
             <label>Location</label>
-            <input id="cmLocation" list="cmLocList" placeholder="e.g. Dubai, UAE" />
-            <datalist id="cmLocList"></datalist>
+            <select id="cmLocation" onchange="updateCampaignLocationWarning()"></select>
+            <span class="cadm-hint" id="cmLocHint">Applicants from this campaign pay this location's base fee. Leave blank to let them choose.</span>
           </div>
 
           <div class="field">
@@ -302,8 +395,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../js/supabase.js?v=3"></script>
-  <script src="admin.js?v=8"></script>
-  <script src="campaigns.js?v=1"></script>
+  <script src="admin.js?v=9"></script>
+  <script src="campaigns.js?v=2"></script>
   <script>
     initAdmin();
   </script>

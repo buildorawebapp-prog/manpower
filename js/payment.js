@@ -8,6 +8,119 @@ let currentStep = 1;
 let candidateData = {};
 let resumeUrl = null;
 
+// Server-resolved fee snapshot for the current review (base + surcharge, paise).
+// Null until get_application_fee succeeds; the pay button stays disabled while
+// null so nobody can pay against an unknown/invalid price.
+let feeSnapshot = null;
+
+/* ----------------------------------------------------------------------
+   Fee helpers (display only — the SERVER is always the final authority)
+---------------------------------------------------------------------- */
+function escFee(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function paiseToRupees(paise) {
+  const p = Number(paise);
+  if (!Number.isFinite(p)) return '—';
+  return (p / 100).toLocaleString('en-IN', {
+    minimumFractionDigits: (p % 100 === 0) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function feeIsUsable(f) {
+  return !!(f && Number.isFinite(f.total_paise) && f.total_paise >= 100);
+}
+
+function payButtonLabel() {
+  return feeIsUsable(feeSnapshot)
+    ? '🔒 Confirm & Proceed to Pay ₹' + paiseToRupees(feeSnapshot.total_paise)
+    : '🔒 Confirm & Proceed to Pay';
+}
+
+// Restore the pay button to its resting state (used after a dismissed/failed
+// attempt). Disabled only when we genuinely have no usable fee AND the review
+// is showing — otherwise the server stays the authority at pay time.
+function resetPayButton() {
+  const payBtn = document.getElementById('proceedPayBtn');
+  if (!payBtn) return;
+  payBtn.disabled = false;
+  payBtn.textContent = payButtonLabel();
+}
+
+// Fetch + render the live fee breakdown for the current trade + location.
+// Called when the review step is shown (and again if a campaign is released).
+async function renderApplicationFee() {
+  const box = document.getElementById('feeSummary');
+  const payBtn = document.getElementById('proceedPayBtn');
+  feeSnapshot = null;
+  if (box) box.innerHTML = '<div class="fee-loading">Calculating your fee…</div>';
+  if (payBtn) { payBtn.disabled = true; payBtn.textContent = 'Calculating fee…'; }
+
+  try {
+    const client = (typeof initSupabase === 'function') ? initSupabase() : null;
+    if (!client) throw new Error('offline');
+
+    const { data, error } = await client.rpc('get_application_fee', {
+      p_trade: candidateData.trade || null,
+      p_location: candidateData.location || null,
+    });
+    if (error) throw error;
+
+    const fee = (data && typeof data === 'object') ? data : null;
+    if (!fee || fee.ok !== true) {
+      // A real pricing problem (e.g. location not in the list). Do NOT let the
+      // user pay — the amount is unknown. Ask them to fix their selection.
+      const raw = (fee && fee.error) ? String(fee.error) : '';
+      const msg = raw.replace(/^[A-Z_]+:\s*/, '') ||
+        'We could not calculate your fee. Please go back and choose your location from the list.';
+      if (box) box.innerHTML = '<div class="fee-error">⚠️ ' + escFee(msg) + '</div>';
+      if (payBtn) { payBtn.disabled = true; payBtn.textContent = 'Fee unavailable'; }
+      return;
+    }
+
+    feeSnapshot = {
+      base_paise: Number(fee.base_paise),
+      surcharge_paise: Number(fee.surcharge_paise) || 0,
+      total_paise: Number(fee.total_paise),
+      location: fee.location,
+      trade: fee.trade,
+    };
+    if (box) box.innerHTML = feeBreakdownHtml(feeSnapshot);
+    resetPayButton();
+  } catch (e) {
+    // Transient read failure (network). We don't fabricate a price: the server
+    // resolves the real amount at pay time and will reject an invalid location.
+    // Keep the button usable so a blip doesn't block a genuine applicant.
+    console.warn('Fee lookup failed, deferring to server at pay time:', e);
+    if (box) {
+      box.innerHTML =
+        '<h3 style="margin:0">Application Fee</h3>' +
+        '<div class="payment-amount" id="feeAmount">₹—</div>' +
+        '<p style="margin:0; opacity:0.9">Your exact fee will be confirmed securely on the payment screen.</p>';
+    }
+    if (payBtn) { payBtn.disabled = false; payBtn.textContent = '🔒 Confirm & Proceed to Pay'; }
+  }
+}
+
+function feeBreakdownHtml(fee) {
+  const hasSur = Number(fee.surcharge_paise) > 0;
+  const baseRow =
+    '<div class="fee-row"><span>Base — ' + escFee(fee.location || 'Location') + '</span>' +
+    '<span>₹' + paiseToRupees(fee.base_paise) + '</span></div>';
+  const surRow = hasSur
+    ? '<div class="fee-row"><span>' + escFee(fee.trade || 'Trade') + ' surcharge</span>' +
+      '<span>+ ₹' + paiseToRupees(fee.surcharge_paise) + '</span></div>'
+    : '';
+  return '<h3 style="margin:0">Application Fee</h3>' +
+    '<div class="fee-lines">' + baseRow + surRow + '</div>' +
+    '<div class="payment-amount" id="feeAmount">₹' + paiseToRupees(fee.total_paise) + '</div>' +
+    '<p style="margin:0; opacity:0.9">One-time registration fee. Secure payment via Razorpay.</p>';
+}
+
 /* ----------------------------------------------------------------------
    Step Navigation
 ---------------------------------------------------------------------- */
@@ -271,6 +384,10 @@ function displayReview() {
       <span class="review-value"><a href="${resumeUrl}" target="_blank" class="resume-link">View PDF ↗</a></span>
     </div>
   `;
+
+  // Resolve + show the live fee for this trade + location (fills #feeSummary
+  // and enables the pay button). Fire-and-forget: it updates the DOM when done.
+  renderApplicationFee();
 }
 
 function goBackToEdit() {
@@ -310,7 +427,7 @@ async function proceedToPayment() {
       if (orderResult && orderResult.code === 'ROLE_CONFLICT') {
         alert('This email is already registered as an employer account. Please use a different email to apply as a candidate.');
         payBtn.disabled = false;
-        payBtn.textContent = 'Confirm & Proceed to Pay ₹200';
+        payBtn.textContent = payButtonLabel();
         return;
       }
 
@@ -326,7 +443,7 @@ async function proceedToPayment() {
         alert('Campaign no longer available\n\n' + campaignErr[2] +
               '\n\nYou have not been charged. Press the pay button again to continue as a normal application.');
         payBtn.disabled = false;
-        payBtn.textContent = 'Confirm & Proceed to Pay ₹200';
+        payBtn.textContent = payButtonLabel();
         return;
       }
 
@@ -336,13 +453,19 @@ async function proceedToPayment() {
     // Store details for later verification
     const candidateId = orderResult.candidate_id;
     const orderId = orderResult.order_id;
-    const payAmount = orderResult.amount || 20000;
+    // Amount is decided by the SERVER (create_payment_order → resolve_application_fee).
+    // No client-side fallback: if it isn't a valid paise amount, abort rather
+    // than risk charging a wrong number.
+    const payAmount = Number(orderResult.amount);
+    if (!Number.isFinite(payAmount) || payAmount < 100) {
+      throw new Error('The server did not return a valid fee. Please retry.');
+    }
 
     // Step 2: Open Razorpay Checkout with the REAL order_id. Passing order_id is
     // what makes Razorpay return a signature we verify server-side.
     const options = {
       key: orderResult.key_id || CONFIG.razorpayKeyId,
-      amount: payAmount, // ₹200 fixed amount (in paise), set by the server
+      amount: payAmount, // server-resolved paise; Razorpay charges the ORDER's amount
       currency: orderResult.currency || 'INR',
       order_id: orderId,
       name: 'Go Hire Consultancy',
@@ -368,7 +491,7 @@ async function proceedToPayment() {
       modal: {
         ondismiss: function() {
           payBtn.disabled = false;
-          payBtn.textContent = 'Confirm & Proceed to Pay ₹200';
+          payBtn.textContent = payButtonLabel();
         }
       }
     };
@@ -398,7 +521,7 @@ async function proceedToPayment() {
     console.error('Payment initiation error:', error);
     alert('Failed to initiate payment: ' + error.message);
     payBtn.disabled = false;
-    payBtn.textContent = 'Confirm & Proceed to Pay ₹200';
+    payBtn.textContent = payButtonLabel();
   }
 }
 

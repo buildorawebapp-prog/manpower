@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Apply for Work — Go Hire Consultancy</title>
-  <meta name="description" content="Register as a skilled worker with Go Hire Consultancy. Application fee: ₹200" />
+  <meta name="description" content="Register as a skilled worker with Go Hire Consultancy. Pay the one-time application fee securely online." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
@@ -162,6 +162,38 @@
       color: var(--orange);
       margin: 16px 0;
     }
+    /* Dynamic fee breakdown (base + optional trade surcharge) */
+    .fee-lines {
+      margin: 10px 0 2px;
+      border-top: 1px solid rgba(255,255,255,0.18);
+      border-bottom: 1px solid rgba(255,255,255,0.18);
+    }
+    .fee-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 14px;
+      padding: 8px 0;
+      opacity: 0.95;
+    }
+    .fee-row span:last-child {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .fee-loading { font-size: 15px; padding: 10px 0; opacity: 0.9; }
+    .fee-error {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffd7d0;
+      padding: 8px 0;
+      line-height: 1.5;
+    }
+    select.is-locked {
+      background: #f1f3f5;
+      color: #444;
+      cursor: not-allowed;
+      opacity: 0.9;
+    }
 
     /* Success Page */
     .success-message {
@@ -246,7 +278,7 @@
   <section class="page-hero with-photo" style="--hero-img:url('/images/worker.jpg')">
     <div class="container">
       <h1>Apply for Work</h1>
-      <p>Complete your application in 3 simple steps. Application fee: ₹200</p>
+      <p>Complete your application in 3 simple steps. Your fee is shown before you pay.</p>
     </div>
   </section>
 
@@ -321,8 +353,9 @@
 
             <div class="field">
               <label>Preferred Location <span class="req">*</span></label>
-              <input type="text" id="location" list="locList" required />
-              <datalist id="locList"></datalist>
+              <select id="location" required>
+                <option value="">Select your preferred location...</option>
+              </select>
               <span class="locked-hint" id="locationLockHint" style="display:none"></span>
             </div>
 
@@ -376,14 +409,16 @@
             <!-- Populated by JS -->
           </div>
 
-          <div class="payment-summary">
-            <h3 style="margin:0">Application Fee</h3>
-            <div class="payment-amount">₹200</div>
-            <p style="margin:0; opacity:0.9">One-time registration fee. Secure payment via Razorpay.</p>
+          <div class="payment-summary" id="paymentSummary">
+            <div id="feeSummary">
+              <h3 style="margin:0">Application Fee</h3>
+              <div class="payment-amount" id="feeAmount">₹—</div>
+              <p style="margin:0; opacity:0.9">Calculating your fee…</p>
+            </div>
           </div>
 
-          <button id="proceedPayBtn" class="btn btn-primary btn-lg btn-block" onclick="proceedToPayment()">
-            🔒 Confirm & Proceed to Pay ₹200
+          <button id="proceedPayBtn" class="btn btn-primary btn-lg btn-block" onclick="proceedToPayment()" disabled>
+            🔒 Confirm &amp; Proceed to Pay
           </button>
 
           <button class="btn btn-white btn-lg btn-block" onclick="showStep(2)" style="margin-top:12px">
@@ -419,7 +454,7 @@
   <script src="js/app.js?v=5"></script>
   <script src="js/campaigns.js?v=2"></script>
   <script src="js/phone-input.js?v=2"></script>
-  <script src="js/payment.js?v=7"></script>
+  <script src="js/payment.js?v=8"></script>
   <script>
     /* ==================================================================
        CAMPAIGN DEEP LINK  —  apply.html?campaign=<uuid>&trade=<name>
@@ -479,36 +514,54 @@
       }
     }
 
-    /* Preferred Location works like the trade lock, with two differences:
-         1. It is a text input, so we use `readonly` instead of `disabled`.
-            readonly still submits the value, keeps it selectable/copyable, and
-            stops the mobile keyboard from opening — `disabled` would grey it out
-            so hard that people think the form is broken.
-         2. Not every campaign sets a location. With no campaign location the
-            field stays a normal free-text field with its datalist suggestions.
-       The `list` attribute is stripped while locked so the suggestion dropdown
-       can't open on a field the user isn't allowed to change. */
+    /* Preferred Location works like the trade lock. It is now a <select> (a
+       strict whitelist — a typo can no longer buy a cheaper location), so we
+       use `disabled` + `.is-locked`, exactly like the trade. A disabled select
+       still exposes `.value` to JS (payment.js reads it directly), and the
+       server overrides it from the campaign anyway. Not every campaign sets a
+       location — with none, the field stays a normal, user-editable dropdown.
+       If the campaign's location isn't already an option (admin added the
+       campaign before pricing that location), we add it so it can be shown and
+       read; the server still re-validates it against the locations table. */
+    function ensureLocationOption(name) {
+      const sel = document.getElementById('location');
+      const want = String(name || '').trim();
+      if (!sel || !want) return;
+      const exists = Array.from(sel.options)
+        .some(o => o.value.trim().toLowerCase() === want.toLowerCase());
+      if (!exists) {
+        const o = document.createElement('option');
+        o.value = want;
+        o.textContent = want;
+        sel.appendChild(o);
+      }
+    }
+
     function lockCampaignLocation() {
-      const input = document.getElementById('location');
-      const hint  = document.getElementById('locationLockHint');
-      if (!input) return;
+      const sel  = document.getElementById('location');
+      const hint = document.getElementById('locationLockHint');
+      if (!sel) return;
 
       const campLoc = (CAMPAIGN_CTX && CAMPAIGN_CTX.location || '').trim();
 
       if (!campLoc) {
-        input.readOnly = false;
-        input.classList.remove('is-locked');
-        input.removeAttribute('aria-readonly');
-        if (!input.hasAttribute('list')) input.setAttribute('list', 'locList');
+        sel.disabled = false;
+        sel.classList.remove('is-locked');
+        sel.removeAttribute('aria-readonly');
         if (hint) hint.style.display = 'none';
         return;
       }
 
-      input.value = campLoc;
-      input.readOnly = true;
-      input.classList.add('is-locked');
-      input.setAttribute('aria-readonly', 'true');
-      input.removeAttribute('list');
+      ensureLocationOption(campLoc);
+      sel.value = campLoc;
+      if (sel.value !== campLoc) {                 // case-insensitive fallback
+        const opt = Array.from(sel.options)
+          .find(o => o.value.trim().toLowerCase() === campLoc.toLowerCase());
+        if (opt) sel.value = opt.value;
+      }
+      sel.disabled = true;                         // value is still read by JS
+      sel.classList.add('is-locked');
+      sel.setAttribute('aria-readonly', 'true');
       if (hint) {
         hint.textContent = '🔒 ' + t('camp.locationLocked');
         hint.style.display = '';
@@ -585,7 +638,7 @@
     function fillFormDropdowns() {
       const tradeSelect = document.getElementById('trade');
       const expSelect = document.getElementById('experience');
-      const locList = document.getElementById('locList');
+      const locSelect = document.getElementById('location');
 
       // Fill trades
       tradeSelect.innerHTML = '<option value="">Select your trade...</option>' +
@@ -595,8 +648,21 @@
       expSelect.innerHTML = '<option value="">Select experience...</option>' +
         EXP_OPTIONS.map(e => `<option value="${e}">${e}</option>`).join('');
 
-      // Fill locations
-      locList.innerHTML = DEMO_LOCATIONS.map(l => `<option value="${l}">`).join('');
+      // Fill locations — STRICT dropdown (whitelist). Free text is gone: a typo
+      // can no longer pick a cheaper location. When the per-location fee map is
+      // loaded we show the price right in the option ("Dubai — ₹400").
+      const prevLoc = locSelect ? locSelect.value : '';
+      if (locSelect) {
+        locSelect.innerHTML = '<option value="">Select your preferred location...</option>' +
+          DEMO_LOCATIONS.map(l => {
+            const fee = window.LOCATION_FEE && window.LOCATION_FEE[String(l).trim().toLowerCase()];
+            const label = (typeof fee === 'number')
+              ? `${l} — ₹${(fee / 100).toLocaleString('en-IN', { minimumFractionDigits: (fee % 100 ? 2 : 0), maximumFractionDigits: 2 })}`
+              : l;
+            return `<option value="${l}">${label}</option>`;
+          }).join('');
+        if (prevLoc) locSelect.value = prevLoc;   // keep any prior selection
+      }
 
       // Build international phone field (country dropdown + digits-only number)
       // Guarded so a second fillFormDropdowns() (after live data) doesn't reset
@@ -635,12 +701,32 @@
       }
     });
 
+    // Per-location fee map for the dropdown labels (display only — the real,
+    // authoritative fee is resolved server-side via get_application_fee on the
+    // review step and again inside create_payment_order at payment time).
+    window.LOCATION_FEE = window.LOCATION_FEE || {};
+    async function loadLocationFees() {
+      try {
+        const client = (typeof initSupabase === 'function') ? initSupabase() : null;
+        if (!client) return;
+        const { data } = await client.from('locations')
+          .select('name,fee_paise').eq('is_active', true);
+        (data || []).forEach(r => {
+          if (r && r.name != null && typeof r.fee_paise === 'number') {
+            window.LOCATION_FEE[String(r.name).trim().toLowerCase()] = r.fee_paise;
+          }
+        });
+      } catch (_) { /* labels are cosmetic; ignore read errors */ }
+    }
+
     // Initialize
     fillFormDropdowns();
     initShell("apply.html");
     // Live trades load first so the campaign's trade is guaranteed to exist in
-    // the dropdown before we try to pre-select and lock it.
-    loadLiveData(() => {
+    // the dropdown before we try to pre-select and lock it. Location fees load
+    // alongside so the location dropdown can show prices.
+    loadLiveData(async () => {
+      await loadLocationFees();
       fillFormDropdowns();
       initCampaignContext();
     });

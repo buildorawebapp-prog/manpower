@@ -12,8 +12,12 @@ let ADMIN_LOCATIONS = [];   // [{id, name}]
 let ADMIN_TRADES = [];      // [{id, name}]
 /* Keys here are written straight to the settings table (Object.entries →
    upsert), so a property name IS the DB key. phone_proc1 / phone_proc2 are
-   read by js/app.js to fill the Procurement Coordinator contact cards. */
+   read by js/app.js to fill the Recruitment Coordinator contact cards. */
 let ADMIN_SETTINGS = { phone: "", whatsapp: "", email: "", company: "", address: "", phone_proc1: "", phone_proc2: "" };
+
+/* Best-effort admin identifier (their login email), written to fee_audit so
+   price changes are attributable. Set in requireAuth(). */
+let ADMIN_EMAIL = "";
 
 /* When set to a campaign id, the Candidates table shows only that campaign's
    applicants. Driven by the "👥 Applicants" button in the Campaigns view. */
@@ -42,6 +46,8 @@ function escAttr(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").r
 async function requireAuth() {
   const { data } = await client.auth.getSession();
   if (!data.session) { window.location.href = "login.html"; return false; }
+  // Best-effort admin identifier, stamped onto fee_audit rows.
+  ADMIN_EMAIL = (data.session.user && data.session.user.email) || "";
   return true;
 }
 async function logout() {
@@ -56,6 +62,9 @@ function showView(view, el) {
   document.querySelectorAll(".admin-nav a").forEach(a => a.classList.remove("active"));
   if (el) el.classList.add("active");
   document.getElementById("pageTitle").textContent = el ? el.dataset.title : "Dashboard";
+  // The price-change history is fetched fresh each time the panel opens (keeps
+  // it off the main dashboard load and always current).
+  if (view === "pricing" && typeof loadFeeAudit === "function") loadFeeAudit();
 }
 /* Find a sidebar link by the view it opens — safer than indexing into the
    node list, which shifts every time a menu item is added. */
@@ -100,6 +109,7 @@ async function loadAll() {
   renderEmployers();
   renderLocationsAdmin();
   renderTradesAdmin();
+  renderPricing();
   loadSettings();
 
   // Campaigns live in admin/campaigns.js. Guarded so the dashboard still
@@ -458,6 +468,295 @@ async function removeTrade(id) {
   ADMIN_TRADES = ADMIN_TRADES.filter(t => t.id !== id);
   renderTradesAdmin();
   await client.from("trades").delete().eq("id", id);
+}
+
+/* ==========================================================================
+   Pricing — per-location BASE fee + per-trade optional SURCHARGE.
+   The applicant pays  location.fee_paise + trade.surcharge_paise  (the exact
+   same maths the server's resolve_application_fee() enforces). This panel only
+   edits the price columns; it can NEVER set an amount on a payment. All money is
+   stored as INTEGER PAISE; admins think in rupees, so we convert at the edges.
+   Every change is UPDATE + a fee_audit row (who / old / new).
+   ========================================================================== */
+const FEE_MIN_PAISE = 100;        // ₹1  — Razorpay floor (also the DB CHECK)
+const FEE_MAX_PAISE = 5000000;    // ₹50,000 — admin-typo cap (also the DB CHECK)
+
+/* paise -> value for a rupee <input>: whole rupees when clean, else 2 dp. */
+function paiseToRupeeInput(paise) {
+  const n = Number(paise);
+  if (!Number.isFinite(n)) return "";
+  return (n % 100 === 0) ? String(Math.round(n / 100)) : (n / 100).toFixed(2);
+}
+/* paise -> "₹1,234" (or "₹1,234.50") for labels. */
+function paiseToRupeeLabel(paise) {
+  const n = Number(paise) || 0;
+  const opts = (n % 100 === 0)
+    ? { maximumFractionDigits: 0 }
+    : { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+  return "₹" + (n / 100).toLocaleString("en-IN", opts);
+}
+/* rupee text -> integer paise, or NaN if it isn't a sane non-negative number.
+   Math.round avoids binary-float drift (e.g. 200.1*100 = 20009.9999...). */
+function rupeesToPaise(text) {
+  const r = Number(String(text == null ? "" : text).trim().replace(/[₹,\s]/g, ""));
+  if (!Number.isFinite(r) || r < 0) return NaN;
+  return Math.round(r * 100);
+}
+function locFeePaise(l) {
+  const n = Number(l && l.fee_paise);
+  return Number.isFinite(n) ? n : 20000;         // default ₹200 until edited
+}
+function tradeSurPaise(t) {
+  const n = Number(t && t.surcharge_paise);
+  return Number.isFinite(n) ? n : 0;             // default: no surcharge
+}
+function priceNote(el, msg, ok) {
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = ok ? "var(--green)" : "#e5484d";
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.textContent = ""; }, 2800);
+}
+
+/* ---- render (all in-memory; called from loadAll) ---- */
+function renderPricing() {
+  renderLocPriceRows();
+  renderTradePriceRows();
+  renderPriceCalcOptions();
+  renderPriceCalc();
+}
+
+function renderLocPriceRows() {
+  const wrap = document.getElementById("locPriceRows");
+  if (!wrap) return;
+  if (!ADMIN_LOCATIONS.length) {
+    wrap.innerHTML = `<p style="color:var(--muted)">No locations yet. Add them in the 📍 Locations tab first — every location needs a base fee.</p>`;
+    return;
+  }
+  wrap.innerHTML = ADMIN_LOCATIONS.map(l => {
+    const off = l.is_active === false ? ` <span class="price-off">inactive</span>` : "";
+    return `<div class="price-row">
+      <div class="price-name">${escAttr(l.name)}${off}</div>
+      <div class="price-input"><span class="rupee">₹</span>
+        <input type="number" min="1" max="50000" step="1" inputmode="decimal"
+               id="locFee-${l.id}" value="${escAttr(paiseToRupeeInput(locFeePaise(l)))}"
+               oninput="markPriceDirty('loc','${l.id}')"
+               onkeydown="if(event.key==='Enter')saveLocationFee('${l.id}')" /></div>
+      <button class="btn btn-primary price-save" id="locSave-${l.id}" onclick="saveLocationFee('${l.id}')" disabled>Save</button>
+      <span class="price-note" id="locNote-${l.id}"></span>
+    </div>`;
+  }).join("");
+}
+
+function renderTradePriceRows() {
+  const wrap = document.getElementById("tradePriceRows");
+  if (!wrap) return;
+  if (!ADMIN_TRADES.length) {
+    wrap.innerHTML = `<p style="color:var(--muted)">No trades yet. Add them in the 🛠️ Trades tab. A surcharge is optional — leave it at ₹0 for no extra charge.</p>`;
+    return;
+  }
+  wrap.innerHTML = ADMIN_TRADES.map(t => {
+    const off = t.is_active === false ? ` <span class="price-off">inactive</span>` : "";
+    return `<div class="price-row">
+      <div class="price-name">${escAttr(t.icon || "🛠️")} ${escAttr(t.name)}${off}</div>
+      <div class="price-input"><span class="rupee">+₹</span>
+        <input type="number" min="0" max="50000" step="1" inputmode="decimal"
+               id="tradeSur-${t.id}" value="${escAttr(paiseToRupeeInput(tradeSurPaise(t)))}"
+               oninput="markPriceDirty('trade','${t.id}')"
+               onkeydown="if(event.key==='Enter')saveTradeSurcharge('${t.id}')" /></div>
+      <button class="btn btn-primary price-save" id="tradeSave-${t.id}" onclick="saveTradeSurcharge('${t.id}')" disabled>Save</button>
+      <span class="price-note" id="tradeNote-${t.id}"></span>
+    </div>`;
+  }).join("");
+}
+
+/* Enable a row's Save button only when the typed value differs from what's
+   stored (and is itself a valid integer paise). */
+function markPriceDirty(kind, id) {
+  const isLoc = kind === "loc";
+  const arr = isLoc ? ADMIN_LOCATIONS : ADMIN_TRADES;
+  const rec = arr.find(x => x.id === id);
+  const inp = document.getElementById((isLoc ? "locFee-" : "tradeSur-") + id);
+  const btn = document.getElementById((isLoc ? "locSave-" : "tradeSave-") + id);
+  if (!rec || !inp || !btn) return;
+  const stored = isLoc ? locFeePaise(rec) : tradeSurPaise(rec);
+  const now = rupeesToPaise(inp.value);
+  const min = isLoc ? FEE_MIN_PAISE : 0;
+  btn.disabled = !(Number.isInteger(now) && now >= min && now <= FEE_MAX_PAISE && now !== stored);
+}
+
+/* Typo guard (L12): confirm unusually large or big-swing edits before they go
+   live. Fires on a large absolute amount (≥ ₹2,000), a 3×+ jump, or a drop to
+   ≤ ⅓ of the current price (the money-leakage direction). Normal small
+   adjustments save silently. Returns true to proceed, false if admin cancels. */
+function confirmBigPriceChange(kind, name, oldPaise, newPaise) {
+  const BIG_ABS = 200000;                       // ₹2,000 — well above a normal fee
+  const old = Number.isInteger(oldPaise) ? oldPaise : 0;
+  let unusual = newPaise >= BIG_ABS;
+  if (old > 0 && (newPaise >= old * 3 || newPaise * 3 <= old)) unusual = true;
+  if (!unusual) return true;
+  const what = kind === "loc"
+    ? "Base fee for “" + name + "”"
+    : "Surcharge for “" + name + "”";
+  const arrow = newPaise > old ? "▲ increase" : "▼ decrease";
+  return confirm(
+    what + "\n\n" +
+    "Current:  " + paiseToRupeeLabel(old) + "\n" +
+    "New:      " + paiseToRupeeLabel(newPaise) + "   (" + arrow + ")\n\n" +
+    "This is what every applicant for it will be charged. Save this price?"
+  );
+}
+
+async function saveLocationFee(id) {
+  const rec = ADMIN_LOCATIONS.find(l => l.id === id);
+  const inp = document.getElementById("locFee-" + id);
+  const btn = document.getElementById("locSave-" + id);
+  const note = document.getElementById("locNote-" + id);
+  if (!rec || !inp) return;
+  const paise = rupeesToPaise(inp.value);
+  if (!Number.isInteger(paise) || paise < FEE_MIN_PAISE || paise > FEE_MAX_PAISE) {
+    priceNote(note, "Enter ₹1 – ₹50,000", false); return;
+  }
+  const old = locFeePaise(rec);
+  if (paise === old) { priceNote(note, "No change", true); if (btn) btn.disabled = true; return; }
+  if (!confirmBigPriceChange("loc", rec.name, old, paise)) {
+    priceNote(note, "Cancelled — not saved", false); markPriceDirty("loc", id); return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+  const { error } = await client.from("locations")
+    .update({ fee_paise: paise, updated_at: new Date().toISOString() }).eq("id", id);
+  if (btn) btn.textContent = "Save";
+  if (error) { priceNote(note, "✗ " + error.message, false); markPriceDirty("loc", id); return; }
+
+  rec.fee_paise = paise;                       // keep local state in sync
+  await writeFeeAudit("location", id, rec.name, old, paise);
+  priceNote(note, "✓ Saved " + paiseToRupeeLabel(paise), true);
+  renderPriceCalc();                           // calculator reflects the new price
+  if (!document.getElementById("view-pricing").classList.contains("hide")) loadFeeAudit();
+}
+
+async function saveTradeSurcharge(id) {
+  const rec = ADMIN_TRADES.find(t => t.id === id);
+  const inp = document.getElementById("tradeSur-" + id);
+  const btn = document.getElementById("tradeSave-" + id);
+  const note = document.getElementById("tradeNote-" + id);
+  if (!rec || !inp) return;
+  const paise = rupeesToPaise(inp.value);
+  if (!Number.isInteger(paise) || paise < 0 || paise > FEE_MAX_PAISE) {
+    priceNote(note, "Enter ₹0 – ₹50,000", false); return;
+  }
+  const old = tradeSurPaise(rec);
+  if (paise === old) { priceNote(note, "No change", true); if (btn) btn.disabled = true; return; }
+  if (!confirmBigPriceChange("trade", rec.name, old, paise)) {
+    priceNote(note, "Cancelled — not saved", false); markPriceDirty("trade", id); return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+  const { error } = await client.from("trades")
+    .update({ surcharge_paise: paise, updated_at: new Date().toISOString() }).eq("id", id);
+  if (btn) btn.textContent = "Save";
+  if (error) { priceNote(note, "✗ " + error.message, false); markPriceDirty("trade", id); return; }
+
+  rec.surcharge_paise = paise;
+  await writeFeeAudit("trade", id, rec.name, old, paise);
+  priceNote(note, paise === 0 ? "✓ Surcharge removed" : "✓ Saved +" + paiseToRupeeLabel(paise), true);
+  renderPriceCalc();
+  if (!document.getElementById("view-pricing").classList.contains("hide")) loadFeeAudit();
+}
+
+/* One audit row per change. Best-effort: the price is already saved, so an
+   audit failure only loses history — never blocks the edit. */
+async function writeFeeAudit(target_type, target_id, target_name, old_paise, new_paise) {
+  try {
+    await client.from("fee_audit").insert({
+      changed_by: ADMIN_EMAIL || null,
+      target_type, target_id, target_name,
+      old_paise, new_paise,
+    });
+  } catch (e) { console.warn("fee_audit insert failed:", e && e.message ? e.message : e); }
+}
+
+/* ---- live calculator (mirrors resolve_application_fee: base + optional +) ---- */
+function renderPriceCalcOptions() {
+  const locSel = document.getElementById("calcLoc");
+  const trSel = document.getElementById("calcTrade");
+  if (locSel) {
+    const prev = locSel.value;
+    locSel.innerHTML = `<option value="">Select location…</option>` +
+      ADMIN_LOCATIONS.filter(l => l.is_active !== false)
+        .map(l => `<option value="${escAttr(l.name)}">${escAttr(l.name)}</option>`).join("");
+    if (prev) locSel.value = prev;
+  }
+  if (trSel) {
+    const prev = trSel.value;
+    trSel.innerHTML = `<option value="">No trade (base only)</option>` +
+      ADMIN_TRADES.filter(t => t.is_active !== false)
+        .map(t => `<option value="${escAttr(t.name)}">${escAttr((t.icon ? t.icon + " " : "") + t.name)}</option>`).join("");
+    if (prev) trSel.value = prev;
+  }
+}
+function renderPriceCalc() {
+  const locEl = document.getElementById("calcLoc");
+  const trEl = document.getElementById("calcTrade");
+  const totalEl = document.getElementById("calcTotal");
+  const breakEl = document.getElementById("calcBreak");
+  if (!totalEl) return;
+  const locName = locEl ? locEl.value : "";
+  const trName = trEl ? trEl.value : "";
+  if (!locName) {
+    totalEl.textContent = "—";
+    if (breakEl) breakEl.textContent = "Pick a location to preview the fee.";
+    return;
+  }
+  const loc = ADMIN_LOCATIONS.find(l => String(l.name).toLowerCase() === locName.toLowerCase());
+  const base = loc ? locFeePaise(loc) : 20000;
+  let sur = 0, trLabel = "";
+  if (trName) {
+    const tr = ADMIN_TRADES.find(t => String(t.name).toLowerCase() === trName.toLowerCase());
+    sur = tr ? tradeSurPaise(tr) : 0;
+    trLabel = tr ? tr.name : "";
+  }
+  totalEl.textContent = paiseToRupeeLabel(base + sur);
+  if (breakEl) {
+    breakEl.textContent = sur > 0
+      ? `${paiseToRupeeLabel(base)} ${loc ? loc.name : locName} base + ${paiseToRupeeLabel(sur)} ${trLabel} surcharge`
+      : `${paiseToRupeeLabel(base)} ${loc ? loc.name : locName} base • no trade surcharge`;
+  }
+}
+
+/* ---- change history ---- */
+function fmtDateTime(iso) {
+  if (!iso) return "";
+  try { return new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }); }
+  catch (_) { return String(iso).slice(0, 16).replace("T", " "); }
+}
+async function loadFeeAudit() {
+  const wrap = document.getElementById("feeAuditList");
+  if (!wrap) return;
+  const { data, error } = await client
+    .from("fee_audit").select("*")
+    .order("changed_at", { ascending: false }).limit(20);
+  if (error) {
+    wrap.innerHTML = `<p style="color:var(--muted)">Could not load change history${error.message ? " (" + escAttr(error.message) + ")" : ""}.</p>`;
+    return;
+  }
+  if (!data || !data.length) {
+    wrap.innerHTML = `<p style="color:var(--muted)">No price changes yet. Edits you make above will be logged here.</p>`;
+    return;
+  }
+  wrap.innerHTML = data.map(a => {
+    const oldP = Number(a.old_paise), newP = Number(a.new_paise);
+    const dir = newP > oldP ? "up" : (newP < oldP ? "down" : "same");
+    const arrow = dir === "up" ? "▲" : (dir === "down" ? "▼" : "•");
+    const icon = a.target_type === "trade" ? "🛠️" : "📍";
+    return `<div class="price-audit-row">
+      <span class="pa-when">${escAttr(fmtDateTime(a.changed_at))}</span>
+      <span class="pa-what">${icon} ${escAttr(a.target_name || a.target_type)}</span>
+      <span class="pa-change pa-${dir}">${arrow} ${escAttr(paiseToRupeeLabel(a.old_paise))} → ${escAttr(paiseToRupeeLabel(a.new_paise))}</span>
+      <span class="pa-who" title="${escAttr(a.changed_by || "")}">${escAttr(a.changed_by || "admin")}</span>
+    </div>`;
+  }).join("");
 }
 
 /* ---- Settings ---- */

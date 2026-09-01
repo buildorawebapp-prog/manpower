@@ -184,6 +184,59 @@ function renderCampaignsAdmin() {
 /* --------------------------------------------------------- modal (CRUD) */
 function campaignModalEl() { return document.getElementById("campModal"); }
 
+/* Fill the campaign Location <select> with the active, priced locations.
+   A campaign's location OVERRIDES the applicant's on the server and is what the
+   fee is priced from — so it must be a real, active location. If an existing
+   campaign carries a location that is no longer active/priced, we keep it as a
+   flagged option (so saving can't silently wipe it) and warn the admin. */
+function populateCampaignLocationSelect(current) {
+  const sel = document.getElementById("cmLocation");
+  if (!sel) return;
+  const active = (typeof ADMIN_LOCATIONS !== "undefined" ? ADMIN_LOCATIONS : [])
+    .filter(l => l.is_active !== false);
+  const cur = String(current || "").trim();
+  const known = active.some(l => String(l.name).toLowerCase() === cur.toLowerCase());
+
+  let html = `<option value="">No specific location (applicant chooses)</option>`;
+  html += active.map(l =>
+    `<option value="${cEsc(l.name)}"${cur && cur.toLowerCase() === String(l.name).toLowerCase() ? " selected" : ""}>${cEsc(l.name)}</option>`
+  ).join("");
+  // Preserve a legacy / de-listed campaign location, clearly flagged.
+  if (cur && !known) {
+    html += `<option value="${cEsc(cur)}" selected>${cEsc(cur)} — ⚠ no price set</option>`;
+  }
+  sel.innerHTML = html;
+  updateCampaignLocationWarning();
+}
+
+/* Live hint under the campaign Location select: confirms the base fee for a
+   priced location, or warns loudly if the chosen location has no active price
+   (which would block every applicant at payment). */
+function updateCampaignLocationWarning() {
+  const sel = document.getElementById("cmLocation");
+  const hint = document.getElementById("cmLocHint");
+  if (!sel || !hint) return;
+  const val = sel.value.trim();
+  if (!val) {
+    hint.textContent = "No location: applicants choose their own and pay that location's base fee.";
+    hint.style.color = "";
+    return;
+  }
+  const loc = (typeof ADMIN_LOCATIONS !== "undefined" ? ADMIN_LOCATIONS : [])
+    .find(l => l.is_active !== false && String(l.name).toLowerCase() === val.toLowerCase());
+  if (!loc) {
+    hint.innerHTML = "⚠ This location has no active price. Anyone applying through this campaign will be stopped at payment. Add it (with a fee) in the 💰 Pricing tab, or pick a listed location.";
+    hint.style.color = "#b26a00";
+    return;
+  }
+  const paise = Number.isFinite(Number(loc.fee_paise)) ? Number(loc.fee_paise) : 20000;
+  const rupees = (paise % 100 === 0)
+    ? "₹" + (paise / 100).toLocaleString("en-IN")
+    : "₹" + (paise / 100).toFixed(2);
+  hint.textContent = `Applicants from this campaign pay the ${loc.name} base fee (${rupees}), plus any surcharge on the trade.`;
+  hint.style.color = "";
+}
+
 function openCampaignModal(id) {
   const c = id ? ADMIN_CAMPAIGNS.find(x => x.id === id) : null;
   CAMP_EDIT_ID = c ? c.id : null;
@@ -203,10 +256,11 @@ function openCampaignModal(id) {
     `<option value="">Select trade…</option>` +
     trades.map(n => `<option value="${cEsc(n)}"${c && c.trade === n ? " selected" : ""}>${cEsc(n)}</option>`).join("");
 
-  // Location suggestions
-  document.getElementById("cmLocList").innerHTML =
-    (typeof ADMIN_LOCATIONS !== "undefined" ? ADMIN_LOCATIONS : [])
-      .map(l => `<option value="${cEsc(l.name)}"></option>`).join("");
+  // Location is now a strict dropdown bound to the active, PRICED locations.
+  // (Free text is a leakage hole: a campaign location that isn't a priced
+  // location makes resolve_application_fee return LOCATION_INVALID and blocks
+  // every applicant at payment.) Populated + validated below.
+  populateCampaignLocationSelect(c ? (c.location || "") : "");
 
   // Status dropdown — "filled" is trigger-managed, only shown if already set.
   const statuses = c && c.status === "filled" ? ["filled", ...CAMPAIGN_STATUSES] : CAMPAIGN_STATUSES;
@@ -216,7 +270,6 @@ function openCampaignModal(id) {
   }).join("");
 
   document.getElementById("cmTitle").value = c ? (c.title || "") : "";
-  document.getElementById("cmLocation").value = c ? (c.location || "") : "";
   document.getElementById("cmSeats").value = c ? cNum(c.seats_total, 10) : 10;
   document.getElementById("cmDisplay").value = c ? cNum(c.display_total, 50) : 50;
   document.getElementById("cmSalary").value = c ? (c.salary_text || "") : "";
@@ -327,6 +380,21 @@ async function saveCampaign() {
     campModalError("Display total must be at least the real seat count (" + seats + ").");
     return;
   }
+
+  // Location guard: a campaign location that isn't an active PRICED location
+  // makes the server's resolve_application_fee return LOCATION_INVALID, so every
+  // applicant is blocked at payment. Warn before saving such a campaign.
+  const locVal = document.getElementById("cmLocation").value.trim();
+  if (locVal) {
+    const priced = (typeof ADMIN_LOCATIONS !== "undefined" ? ADMIN_LOCATIONS : [])
+      .some(l => l.is_active !== false && String(l.name).toLowerCase() === locVal.toLowerCase());
+    if (!priced && !confirm(
+      `“${locVal}” isn't an active priced location.\n\n` +
+      "Anyone applying through this campaign will be STOPPED at payment because there's no fee set for it.\n\n" +
+      "Add it (with a price) in the 💰 Pricing tab, or pick a listed location.\n\nSave anyway?"
+    )) return;
+  }
+
   const existing = CAMP_EDIT_ID ? ADMIN_CAMPAIGNS.find(c => c.id === CAMP_EDIT_ID) : null;
   const alreadyFilled = existing ? Math.max(0, cNum(existing.seats_filled, 0)) : 0;
   if (existing && seats < alreadyFilled) {

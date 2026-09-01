@@ -15,6 +15,8 @@
 //
 // SECRETS (set once via `supabase secrets set ...`):
 //   RAZORPAY_KEY_SECRET        the Razorpay secret — NEVER put this in frontend
+//   RAZORPAY_KEY_ID            e.g. rzp_live_xxx — enables the extra Razorpay-side
+//                              cross-check below (recommended; optional)
 //   SUPABASE_URL               auto-injected by Supabase
 //   SUPABASE_SERVICE_ROLE_KEY  auto-injected by Supabase
 // ============================================================================
@@ -66,6 +68,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
+    const KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!KEY_SECRET) {
@@ -94,6 +97,46 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false },
     });
+
+    // ---- Defense in depth: confirm with Razorpay's OWN record ---------------
+    // The signature already cryptographically proves this payment is bound to
+    // this order. As an extra anti-leakage lock we also ask Razorpay directly:
+    // the payment must belong to THIS order, be in a paid state, and its amount
+    // must equal what we stored for the order. Best-effort by design — a network
+    // failure or an unset KEY_ID must NOT strand a genuine payer (the signature
+    // already passed) — but a DEFINITE mismatch is rejected hard.
+    if (KEY_ID) {
+      try {
+        const auth = "Basic " + btoa(`${KEY_ID}:${KEY_SECRET}`);
+        const pr = await fetch(
+          `https://api.razorpay.com/v1/payments/${encodeURIComponent(String(paymentId))}`,
+          { headers: { Authorization: auth } },
+        );
+        const pay = await pr.json().catch(() => null);
+        if (pr.ok && pay && pay.id) {
+          // (a) the payment must be for this exact order
+          if (pay.order_id && String(pay.order_id) !== String(orderId)) {
+            return json({ success: false, error: "Payment does not belong to this order." }, 400);
+          }
+          // (b) it must be in a completed state (not failed/created)
+          if (pay.status && !["captured", "authorized"].includes(String(pay.status))) {
+            return json({ success: false, error: "Payment is not completed." }, 400);
+          }
+          // (c) Razorpay's recorded amount must equal what we stored for the order
+          const { data: payRow } = await admin
+            .from("payments")
+            .select("amount")
+            .eq("razorpay_order_id", orderId)
+            .single();
+          if (payRow && typeof pay.amount === "number" && pay.amount !== payRow.amount) {
+            return json({ success: false, error: "Payment amount mismatch." }, 400);
+          }
+        }
+      } catch (_) {
+        // best-effort; the signature was already verified above.
+      }
+    }
+
     const { data, error } = await admin.rpc("verify_payment", {
       p_order_id: orderId,
       p_payment_id: paymentId,
