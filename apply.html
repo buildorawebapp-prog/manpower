@@ -649,18 +649,15 @@
         EXP_OPTIONS.map(e => `<option value="${e}">${e}</option>`).join('');
 
       // Fill locations — STRICT dropdown (whitelist). Free text is gone: a typo
-      // can no longer pick a cheaper location. When the per-location fee map is
-      // loaded we show the price right in the option ("Dubai — ₹400").
+      // can no longer pick a cheaper location. The fee is deliberately NOT shown
+      // here: prices next to each option turn the list into a price menu and
+      // push applicants to pick the cheapest country instead of the one they
+      // actually want. The fee is revealed on the review step (#feeSummary),
+      // before payment, resolved server-side by get_application_fee.
       const prevLoc = locSelect ? locSelect.value : '';
       if (locSelect) {
         locSelect.innerHTML = '<option value="">Select your preferred location...</option>' +
-          DEMO_LOCATIONS.map(l => {
-            const fee = window.LOCATION_FEE && window.LOCATION_FEE[String(l).trim().toLowerCase()];
-            const label = (typeof fee === 'number')
-              ? `${l} — ₹${(fee / 100).toLocaleString('en-IN', { minimumFractionDigits: (fee % 100 ? 2 : 0), maximumFractionDigits: 2 })}`
-              : l;
-            return `<option value="${l}">${label}</option>`;
-          }).join('');
+          DEMO_LOCATIONS.map(l => `<option value="${l}">${l}</option>`).join('');
         if (prevLoc) locSelect.value = prevLoc;   // keep any prior selection
       }
 
@@ -701,32 +698,19 @@
       }
     });
 
-    // Per-location fee map for the dropdown labels (display only — the real,
-    // authoritative fee is resolved server-side via get_application_fee on the
-    // review step and again inside create_payment_order at payment time).
-    window.LOCATION_FEE = window.LOCATION_FEE || {};
-    async function loadLocationFees() {
-      try {
-        const client = (typeof initSupabase === 'function') ? initSupabase() : null;
-        if (!client) return;
-        const { data } = await client.from('locations')
-          .select('name,fee_paise').eq('is_active', true);
-        (data || []).forEach(r => {
-          if (r && r.name != null && typeof r.fee_paise === 'number') {
-            window.LOCATION_FEE[String(r.name).trim().toLowerCase()] = r.fee_paise;
-          }
-        });
-      } catch (_) { /* labels are cosmetic; ignore read errors */ }
-    }
+    // NOTE: the browser deliberately does NOT fetch the per-location price list.
+    // Pulling every location's fee just to label the dropdown would (a) turn the
+    // location list into a price menu and (b) leave the whole price sheet sitting
+    // in the network tab. The fee for the ONE location+trade the applicant chose
+    // is fetched on the review step via the get_application_fee RPC, and the real
+    // charge is resolved again server-side inside create_payment_order.
 
     // Initialize
     fillFormDropdowns();
     initShell("apply.html");
     // Live trades load first so the campaign's trade is guaranteed to exist in
-    // the dropdown before we try to pre-select and lock it. Location fees load
-    // alongside so the location dropdown can show prices.
-    loadLiveData(async () => {
-      await loadLocationFees();
+    // the dropdown before we try to pre-select and lock it.
+    loadLiveData(() => {
       fillFormDropdowns();
       initCampaignContext();
     });
