@@ -42,11 +42,35 @@ function payButtonLabel() {
 }
 
 // Restore the pay button to its resting state (used after a dismissed/failed
-// attempt). Disabled only when we genuinely have no usable fee AND the review
-// is showing — otherwise the server stays the authority at pay time.
+// attempt). It enables only when BOTH the fee is usable AND the privacy consent
+// checkbox is ticked — otherwise it stays gated.
 function resetPayButton() {
+  syncPayButtonState();
+}
+
+// The consent checkbox ("I agree to the Privacy Policy / fee is non-refundable")
+// gates payment. Returns true only when it is explicitly checked.
+function payConsentChecked() {
+  const cb = document.getElementById('payConsent');
+  return !!(cb && cb.checked);
+}
+
+// Recompute the pay button's enabled/label state from the fee snapshot + consent.
+// Single source of truth — every code path uses this instead of sprinkling
+// payBtn.disabled = ... calls, so the consent gate can't be accidentally bypassed.
+function syncPayButtonState() {
   const payBtn = document.getElementById('proceedPayBtn');
   if (!payBtn) return;
+  if (!feeIsUsable(feeSnapshot)) {
+    payBtn.disabled = true;
+    payBtn.textContent = 'Fee unavailable';
+    return;
+  }
+  if (!payConsentChecked()) {
+    payBtn.disabled = true;
+    payBtn.textContent = '☝️ Confirm & proceed';
+    return;
+  }
   payBtn.disabled = false;
   payBtn.textContent = payButtonLabel();
 }
@@ -94,7 +118,7 @@ async function renderApplicationFee() {
   } catch (e) {
     // Transient read failure (network). We don't fabricate a price: the server
     // resolves the real amount at pay time and will reject an invalid location.
-    // Keep the button usable so a blip doesn't block a genuine applicant.
+    // The server stays the authority at pay time.
     console.warn('Fee lookup failed, deferring to server at pay time:', e);
     if (box) {
       box.innerHTML =
@@ -102,7 +126,7 @@ async function renderApplicationFee() {
         '<div class="payment-amount" id="feeAmount">₹—</div>' +
         '<p style="margin:0; opacity:0.9">Your exact fee will be confirmed securely on the payment screen.</p>';
     }
-    if (payBtn) { payBtn.disabled = false; payBtn.textContent = '🔒 Confirm & Proceed to Pay'; }
+    if (payBtn) syncPayButtonState();
   }
 }
 
@@ -135,6 +159,10 @@ function showStep(stepNum) {
     s.classList.toggle('active', i + 1 <= stepNum);
     s.classList.toggle('completed', i + 1 < stepNum);
   });
+
+  // Every time the review/payment step appears, re-apply the consent gate so the
+  // pay button reflects both the fee and the checkbox state.
+  if (stepNum === 3) syncPayButtonState();
 }
 
 /* ----------------------------------------------------------------------
@@ -399,6 +427,13 @@ function goBackToEdit() {
 ---------------------------------------------------------------------- */
 async function proceedToPayment() {
   const payBtn = document.getElementById('proceedPayBtn');
+  // Defensive gate: never proceed without consent, even if a code path
+  // re-enabled the button. The checkbox is the single source of truth.
+  if (!payConsentChecked()) {
+    syncPayButtonState();
+    alert('Please read and accept the Privacy Policy before proceeding to payment.');
+    return;
+  }
   payBtn.disabled = true;
   payBtn.textContent = 'Processing...';
 
@@ -426,8 +461,7 @@ async function proceedToPayment() {
       // Friendly message when the email is already an employer account.
       if (orderResult && orderResult.code === 'ROLE_CONFLICT') {
         alert('This email is already registered as an employer account. Please use a different email to apply as a candidate.');
-        payBtn.disabled = false;
-        payBtn.textContent = payButtonLabel();
+        syncPayButtonState();
         return;
       }
 
@@ -442,8 +476,7 @@ async function proceedToPayment() {
         displayReview();
         alert('Campaign no longer available\n\n' + campaignErr[2] +
               '\n\nYou have not been charged. Press the pay button again to continue as a normal application.');
-        payBtn.disabled = false;
-        payBtn.textContent = payButtonLabel();
+        syncPayButtonState();
         return;
       }
 
@@ -490,8 +523,7 @@ async function proceedToPayment() {
       },
       modal: {
         ondismiss: function() {
-          payBtn.disabled = false;
-          payBtn.textContent = payButtonLabel();
+          syncPayButtonState();
         }
       }
     };
@@ -511,8 +543,8 @@ async function proceedToPayment() {
       const ref = (err.metadata && err.metadata.payment_id)
         ? ('\n\nReference: ' + err.metadata.payment_id) : '';
       alert('Payment not completed\n\n' + reason + '\n\n' + advice + ref);
-      payBtn.disabled = false;
-      payBtn.textContent = 'Retry Payment';
+      syncPayButtonState();
+      if (!payBtn.disabled) payBtn.textContent = 'Retry Payment';
     });
 
     rzp.open();
@@ -520,8 +552,7 @@ async function proceedToPayment() {
   } catch (error) {
     console.error('Payment initiation error:', error);
     alert('Failed to initiate payment: ' + error.message);
-    payBtn.disabled = false;
-    payBtn.textContent = payButtonLabel();
+    syncPayButtonState();
   }
 }
 
@@ -649,6 +680,12 @@ function initPaymentForm() {
     fileInput.addEventListener('change', function() {
       handleFileSelect(this);
     });
+  }
+
+  // Bind the privacy consent checkbox so the pay button unlocks/locks live.
+  const consent = document.getElementById('payConsent');
+  if (consent) {
+    consent.addEventListener('change', syncPayButtonState);
   }
 
   console.log('Payment form initialized successfully');

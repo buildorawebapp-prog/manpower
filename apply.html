@@ -181,6 +181,37 @@
       white-space: nowrap;
     }
     .fee-loading { font-size: 15px; padding: 10px 0; opacity: 0.9; }
+    /* Non-refundable notice + consent gate in front of payment */
+    .fee-notice {
+      background: #fff8ed;
+      border: 1px solid #f3d9a8;
+      border-left: 4px solid var(--orange);
+      color: #7a4d00;
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin: 6px 0 16px;
+    }
+    .fee-consent {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: #33404f;
+      cursor: pointer;
+      margin: 0 0 18px;
+    }
+    .fee-consent input[type="checkbox"] {
+      flex: 0 0 auto;
+      width: 20px;
+      height: 20px;
+      margin-top: 2px;
+      accent-color: var(--orange);
+      cursor: pointer;
+    }
+    .fee-consent a { color: var(--orange); font-weight: 600; text-decoration: underline; }
     .fee-error {
       font-size: 14px;
       font-weight: 700;
@@ -416,6 +447,19 @@
               <p style="margin:0; opacity:0.9">Calculating your fee…</p>
             </div>
           </div>
+
+          <!-- Non-refundable notice + mandatory consent gate -->
+          <div class="fee-notice">
+            ⚠️ This is a one-time registration fee and is <strong>non-refundable</strong>.
+            It covers profile creation, verification and placement processing.
+          </div>
+
+          <label class="fee-consent" for="payConsent">
+            <input type="checkbox" id="payConsent" autocomplete="off" />
+            <span>I have read the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>
+            and agree to the processing of my information as described there. I also understand
+            that the application fee is non-refundable.</span>
+          </label>
 
           <button id="proceedPayBtn" class="btn btn-primary btn-lg btn-block" onclick="proceedToPayment()" disabled>
             🔒 Confirm &amp; Proceed to Pay
